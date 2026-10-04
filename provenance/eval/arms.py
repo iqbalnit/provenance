@@ -31,6 +31,13 @@ ARMS = {
 }
 
 
+def select_alerts(alerts, split: str, limit: int | None = None) -> list[dict]:
+    """Labelled alerts in a split, in a deterministic order; optionally the first `limit`."""
+    chosen = sorted((x for x in alerts if "truly_suspicious" in x and split in ("all", x.get("split"))),
+                    key=lambda x: x["alert_id"])
+    return chosen[:limit] if limit else chosen
+
+
 async def run_arm(arm: str, alerts: list[dict], run_id: str) -> list[EvalRow]:
     snapshot, basis = ARMS[arm]
     d = get_deps()
@@ -59,12 +66,13 @@ def main() -> None:
     ap.add_argument("--arm", choices=sorted(ARMS))
     ap.add_argument("--all", action="store_true", help="A0 + every system arm (A1 needs --mode gemini; run it via baselines)")
     ap.add_argument("--split", default="golden", choices=["golden", "eval", "demo", "all"])
+    ap.add_argument("--limit", type=int, help="run only the first N alerts (by alert_id) to bound model spend")
     ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     if not a.arm and not a.all:
         ap.error("give --arm or --all")
     d = get_deps()
-    alerts = [x for x in d.alerts.values() if "truly_suspicious" in x and a.split in ("all", x.get("split"))]
+    alerts = select_alerts(d.alerts.values(), a.split, a.limit)
     if d.mode == "offline":
         print("NOTE: offline mode uses scripted models; these numbers test plumbing only.")
     for arm in (["A0", *ARMS] if a.all else [a.arm]):

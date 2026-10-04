@@ -81,8 +81,8 @@ def from_gcp(mode: str = "gemini") -> Deps:  # pragma: no cover - needs GCP
     gcs = storage.Client(project=config.project())
     ds = config.bq_dataset()
     alerts = {r["alert_id"]: dict(r) for r in bq.query(
-        f"SELECT alert_id, account_id, rule, typology_hint, window_start, window_end, txn_ids, split "
-        f"FROM `{ds}.alerts` WHERE split IN ('demo', 'golden')").result()}
+        f"SELECT alert_id, account_id, rule, typology_hint, window_start, window_end, txn_ids, split, "
+        f"truly_suspicious FROM `{ds}.alerts`").result()}  # labels are stripped before any model sees them
     bucket = config.gcs_bucket()
     customers = json.loads(gcs.bucket(bucket).blob("kyc/customers.json").download_as_text())
     txn_table = bq.get_table(f"{ds}.transactions")

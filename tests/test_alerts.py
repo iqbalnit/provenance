@@ -52,3 +52,23 @@ def test_build_end_to_end(tmp_path):
     rec = json.loads(lines[0])
     assert {"alert_id", "txn_ids", "truly_suspicious", "split", "typology_hint"} <= set(rec)
     assert json.loads((tmp_path / "tuning_report.json").read_text())["thresholds"]["structuring"]["min_count"] == 2
+
+
+def test_thousand_alert_split_gives_golden_eight_positives():
+    from provenance.data.alerts import _scaled_sizes
+
+    chosen = _alerts(1000, 27)
+    s = split(chosen, _scaled_sizes(1000))
+    counts = {k: list(s.values()).count(k) for k in ("golden", "eval", "demo")}
+    assert counts == {"golden": 40, "eval": 900, "demo": 60}
+    pos = {a.alert_id for a in chosen if a.truly_suspicious}
+    assert sum(1 for k, v in s.items() if v == "golden" and k in pos) == 8
+
+
+def test_arms_select_alerts_limit_is_deterministic():
+    from provenance.eval.arms import select_alerts
+
+    rows = [{"alert_id": f"a{i}", "split": "eval", "truly_suspicious": i % 2 == 0} for i in (3, 1, 2)]
+    rows.append({"alert_id": "unlabelled", "split": "eval"})
+    assert [r["alert_id"] for r in select_alerts(rows, "eval", 2)] == ["a1", "a2"]
+    assert len(select_alerts(rows, "all")) == 3

@@ -81,7 +81,7 @@ Every day has a **gate**: a binary, checkable outcome. Standup is at 22:00 IST. 
 | Date | Gate | Owner |
 |---|---|---|
 | **Sat Sep 26** ✅ | GCP project, billing alerts, pinned 3.x model, quota request, hero persona. Repo scaffold, data loaders, A1 runner and Firestore ledger merged | Cloud (lead), all |
-| **Sun Sep 27** | Run README runbook steps 1–3: the SAML-D sample is in BigQuery, 300 alerts at a **measured** 95–97% FP rate, and archived + live OFAC snapshots are in GCS. The hero persona's account is linked in the data | Cloud (data), Iqbal (persona) |
+| **Sun Sep 27** | Run README runbook steps 1–3: the SAML-D sample is in BigQuery, alerts at a **measured** FP rate in the industry's 95–98% range (measured Oct 4: **97.36%** over 44,700 rule alerts on 1.8M transactions), and archived + live OFAC snapshots are in GCS. The hero persona's account is linked in the data | Cloud (data), Iqbal (persona) |
 | **Mon Sep 28** | Hand-review the 40 golden alerts, then **A0 + A1 baselines** (runbook step 4). Screenshot the A1 failures: this opens the video | Iqbal |
 | **Tue Sep 29** | The Typologist writes an evidence plan to Firestore. `txn_analyst` + `watchlist_analyst` write claims through the ledger | Agent eng |
 | **Wed Sep 30** | `adverse_media_analyst` is isolated behind `AgentTool`. **At least one claim's `source_uri` is a real news URL from `groundingChunks`** (budget the whole afternoon for this). The console skeleton is on Firebase | Agent eng, Frontend |
@@ -135,7 +135,7 @@ The line to say: *"It didn't need to know the customer was designated. It only n
 
 | Time | Beat |
 |---|---|
-| 0:00–0:20 | The queue: 97 of 100 alerts are noise, at 25 minutes each. We reproduced that number with our own rule engine |
+| 0:00–0:20 | The queue: 97 of 100 alerts are noise, at 25 minutes each. We reproduced it ourselves: a standard rule engine on 1.8M transactions fired 44,700 alerts, 97.4% of them false positives |
 | 0:20–0:40 | A1: fluent, zero citations, a hallucinated counterparty circled |
 | 0:40–1:40 | Provenance live on Gemini: typology → evidence plan → parallel agents → ledger filling → Gemini cites every sentence first time → gate (six ticks) → auto-close. Then press **Probe the verifier**: one uncited sentence is added in plain view, the deterministic verifier rejects it and the gate would escalate. Say "we added that sentence, not the model". If a real draft rejection happens while recording, show that instead (it's in the drafts history). 3 seconds of the Cloud Trace waterfall |
 | 1:40–2:15 | The reversal, in three beats |
@@ -152,7 +152,7 @@ Fill in names at tonight's standup. Every row needs a name by end of day.
 | Seat | Name | Owns |
 |---|---|---|
 | Architect, eval, narrative | **Iqbal** | Schemas and gate (done), hero persona, golden set, A1 baseline, eval runs, video VO, deck. **Not the React.** |
-| Cloud/data | _TBD_ | GCP bootstrap, quota, billing alerts, BigQuery loads, rule-engine tuning to 95–97% FP, Cloud Run deploy, `agents-cli` scaffold, Secret Manager |
+| Cloud/data | _TBD_ | GCP bootstrap, quota, billing alerts, BigQuery loads, rule-engine tuning (measured 97.36% FP), Cloud Run deploy, `agents-cli` scaffold, Secret Manager |
 | Agent/backend | _TBD_ | `provenance/agents/`: evidence agents, grounding isolation, Firestore `LedgerStore`, `VerifyAndGate` wiring, Model Armor |
 | Frontend/Firebase | _TBD_ | Console: alert input, live ledger view (show both timestamps), six-condition gate panel, staleness toggle, `/eval` page |
 

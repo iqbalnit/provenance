@@ -17,6 +17,7 @@ MIN_ENTRIES rows, which catches HTML error pages saved as CSV.
 from __future__ import annotations
 
 import argparse
+import gzip
 import re
 import urllib.request
 from datetime import UTC, datetime
@@ -44,11 +45,17 @@ def capture_time(final_url: str) -> datetime:
     return datetime.strptime(m.group(1), "%Y%m%d%H%M%S").replace(tzinfo=UTC)
 
 
+def _maybe_gunzip(body: bytes) -> bytes:
+    """Some servers (and Wayback captures) return gzip bodies even when asked not to."""
+    return gzip.decompress(body) if body[:2] == b"\x1f\x8b" else body
+
+
 def _download(url: str, dest: Path, timeout: int = 120) -> str:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "provenance-ai-builder-cup/0.1"})
+    req = urllib.request.Request(url, headers={"User-Agent": "provenance-ai-builder-cup/0.1",
+                                               "Accept-Encoding": "identity"})
     with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 (fixed https URLs)
-        dest.write_bytes(r.read())
+        dest.write_bytes(_maybe_gunzip(r.read()))
         return r.geturl()
 
 

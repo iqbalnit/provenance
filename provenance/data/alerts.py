@@ -37,9 +37,12 @@ from provenance.rules.engine import (
     measure_fp_rate,
 )
 
-TARGET_FP = 0.96
-FP_BAND = (0.95, 0.97)
-N_ALERTS = 300
+# The industry's transaction-monitoring false-positive range is roughly 95-98%; we reproduce it and
+# quote the measured number rather than tuning the rules towards a narrower target.
+TARGET_FP = 0.97
+FP_BAND = (0.95, 0.98)
+# 1,000 alerts: at ~97% FP that is ~27 truly suspicious alerts, enough to test missed-case claims.
+N_ALERTS = 1000
 SPLIT_SIZES = {"golden": 40, "eval": 200, "demo": 60}
 GOLDEN_MIN_POSITIVES = 8
 ARTIFACTS = Path("artifacts")

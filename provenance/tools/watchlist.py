@@ -11,6 +11,7 @@ GRT, Vess_flag, Vess_owner, Remarks. Missing values are "-0-".
 from __future__ import annotations
 
 import csv
+import io
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -42,18 +43,24 @@ class WatchlistSnapshot:
 
 def load_sdn_csv(path: str | Path, *, as_of: datetime, source_uri: str) -> WatchlistSnapshot:
     entries = []
-    with open(path, newline="", encoding="utf-8") as f:
-        for row in csv.reader(f):
-            if len(row) < 4 or not row[0].strip().isdigit():
-                continue
-            entries.append(
-                SdnEntry(
-                    ent_num=row[0].strip(),
-                    name=row[1].strip(),
-                    sdn_type=_clean(row[2]),
-                    program=_clean(row[3]),
-                )
+    raw = Path(path).read_bytes()
+    for enc in ("utf-8-sig", "cp1252", "latin-1"):  # OFAC files are not always strict UTF-8
+        try:
+            text = raw.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    for row in csv.reader(io.StringIO(text, newline="")):
+        if len(row) < 4 or not row[0].strip().isdigit():
+            continue
+        entries.append(
+            SdnEntry(
+                ent_num=row[0].strip(),
+                name=row[1].strip(),
+                sdn_type=_clean(row[2]),
+                program=_clean(row[3]),
             )
+        )
     return WatchlistSnapshot("OFAC SDN", source_uri, as_of, tuple(entries))
 
 

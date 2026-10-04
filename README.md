@@ -117,7 +117,7 @@ Copy `.env.example` to `.env`, fill it in, and `uv sync --extra gcp`. Then:
 uv run python -m provenance.data.saml_d sample --input data/raw/SAML-D.csv
 uv run python -m provenance.data.saml_d upload
 
-# 2. Alerts: tune rules to a 95-97% FP rate, pick 300, split into golden/eval/demo, load them
+# 2. Alerts: tune rules within the industry 95-98% FP range, pick 1,000, split golden/eval/demo, load them
 uv run python -m provenance.data.alerts --upload          # read artifacts/tuning_report.json
 
 # 3. OFAC: archived snapshot from the Wayback Machine plus the live list, validated and staged in GCS
