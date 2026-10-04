@@ -49,3 +49,17 @@ def test_amounts_are_bigquery_numeric_safe():
          "Sender_bank_location": "UK", "Receiver_bank_location": "UK", "Payment_type": "Cash",
          "Is_laundering": "0", "Laundering_type": "Normal"}
     assert {x["amount"] for x in to_account_rows(r)} == {"3547.37"}
+
+
+def test_bq_params_are_typed():
+    from datetime import date
+    from decimal import Decimal
+
+    from provenance.runtime import _plain
+    from provenance.tools.bq_templates import _typed
+
+    assert _typed("DATE", "2023-01-05T10:00:00") == date(2023, 1, 5)
+    assert _typed("NUMERIC", 8000.0) == Decimal("8000.0")
+    assert _typed("STRING", "a") == "a"
+    from datetime import datetime
+    assert _plain({"w": datetime(2023, 1, 5, 10), "t": ["t1"]}) == {"w": "2023-01-05T10:00:00", "t": ["t1"]}

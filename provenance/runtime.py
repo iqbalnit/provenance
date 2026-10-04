@@ -80,7 +80,7 @@ def from_gcp(mode: str = "gemini") -> Deps:  # pragma: no cover - needs GCP
     bq = bigquery.Client(project=config.project())
     gcs = storage.Client(project=config.project())
     ds = config.bq_dataset()
-    alerts = {r["alert_id"]: dict(r) for r in bq.query(
+    alerts = {r["alert_id"]: _plain(dict(r)) for r in bq.query(
         f"SELECT alert_id, account_id, rule, typology_hint, window_start, window_end, txn_ids, split, "
         f"truly_suspicious FROM `{ds}.alerts`").result()}  # labels are stripped before any model sees them
     bucket = config.gcs_bucket()
@@ -98,6 +98,11 @@ def from_gcp(mode: str = "gemini") -> Deps:  # pragma: no cover - needs GCP
         },
         repo=CaseRepository(firestore.Client(project=config.project())),
     )
+
+
+def _plain(row: dict) -> dict:
+    """BigQuery returns datetimes/dates; the agent graph expects the same ISO strings as alerts.jsonl."""
+    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
 
 
 _deps: Deps | None = None

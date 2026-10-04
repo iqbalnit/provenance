@@ -39,7 +39,7 @@ def audit_staleness(
     ledger: LedgerStore, now: datetime, basis: Basis = "source_as_of"
 ) -> StalenessReport:
     """`basis="retrieved_at"` exists only to reproduce the naive behaviour for the
-    demo and eval arm A4: an 18-month-old list fetched this morning looks fresh."""
+    demo and eval arm A4: a 30-month-old list fetched this morning looks fresh."""
     stale: list[StaleClaim] = []
     for c in ledger.all():
         if c.is_stale(now, basis):

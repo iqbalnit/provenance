@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import os
 import re
 import urllib.request
 from datetime import UTC, datetime
@@ -115,6 +116,40 @@ def load_snapshot_from_gcs(uri: str, client=None, cache_dir: Path = SNAPSHOT_DIR
     return load_sdn_csv(local, as_of=as_of, source_uri=uri)
 
 
+def load_any(ref: str, client=None) -> WatchlistSnapshot:
+    """A snapshot from a gs:// URI (as_of from object metadata) or a local data/snapshots/ofac/<date>/sdn.csv path."""
+    if ref.startswith("gs://"):
+        return load_snapshot_from_gcs(ref, client)
+    path = Path(ref)
+    as_of = datetime.fromisoformat(path.parent.name).replace(tzinfo=UTC)
+    return load_sdn_csv(path, as_of=as_of, source_uri=str(path))
+
+
+def new_designations(archived: WatchlistSnapshot, live: WatchlistSnapshot) -> list:
+    """Entries on the live list whose entry number is absent from the archived list."""
+    old = {e.ent_num for e in archived.entries}
+    return [e for e in live.entries if e.ent_num not in old]
+
+
+def write_diff(entries: list, path: Path) -> Path:
+    import csv  # noqa: PLC0415
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["ent_num", "name", "sdn_type", "program"])
+        w.writerows([e.ent_num, e.name, e.sdn_type, e.program] for e in entries)
+    return path
+
+
+def _refs(a) -> tuple[str, str]:
+    archived = a.archived_ref or os.environ.get("PROVENANCE_OFAC_ARCHIVED_URI")
+    live = a.live_ref or os.environ.get("PROVENANCE_OFAC_LIVE_URI")
+    if not archived or not live:
+        raise SystemExit("set PROVENANCE_OFAC_ARCHIVED_URI / PROVENANCE_OFAC_LIVE_URI in .env, or pass --archived-ref/--live-ref")
+    return archived, live
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -123,7 +158,29 @@ def main() -> None:
     f.add_argument("--live", action="store_true")
     f.add_argument("--live-as-of", help="publication date of the live list, YYYY-MM-DD")
     f.add_argument("--upload", action="store_true")
+    d = sub.add_parser("diff", help="list designations on the live list that are absent from the archived one")
+    d.add_argument("--archived-ref", help="gs:// URI or local sdn.csv path (default: PROVENANCE_OFAC_ARCHIVED_URI)")
+    d.add_argument("--live-ref", help="gs:// URI or local sdn.csv path (default: PROVENANCE_OFAC_LIVE_URI)")
+    d.add_argument("--out", type=Path, default=SNAPSHOT_DIR / "new_designations.csv")
     a = ap.parse_args()
+
+    if a.cmd == "diff":
+        archived_ref, live_ref = _refs(a)
+        archived, live = load_any(archived_ref), load_any(live_ref)
+        new = new_designations(archived, live)
+        write_diff(new, a.out)
+        from collections import Counter  # noqa: PLC0415
+
+        print(f"archived {archived.as_of.date()} ({len(archived.entries)}) -> live {live.as_of.date()} "
+              f"({len(live.entries)}): {len(new)} new designations, written to {a.out}")
+        print("by type:", dict(Counter(e.sdn_type or "entity" for e in new).most_common()))
+        print("top programs:", dict(Counter(e.program for e in new).most_common(8)))
+        for kind in ("individual", ""):
+            sample = [e for e in new if e.sdn_type == kind][:15]
+            print(f"\n{'individuals' if kind else 'entities'} (hero candidates):")
+            for e in sample:
+                print(f"  #{e.ent_num}  {e.name}  [{e.program}]")
+        return
 
     staged: list[tuple[Path, datetime, str]] = []
     if a.archived:

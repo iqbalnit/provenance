@@ -26,7 +26,7 @@ The table maps each judging weight to what earns it and where that lives in the 
 ### Three moves nobody else will make
 
 1. **Baseline first.** Arm A1 (plain Gemini, no tools) fails on camera: zero citations and a hallucinated counterparty circled in red. We measure it before writing any agent code.
-2. **The reversal**, which comes out stronger than PLAN.md describes (see §4). Our system escalates a stale case **before the new designation is even in hand**, because it knows the list is 18 months old.
+2. **The reversal**, which comes out stronger than PLAN.md describes (see §4). Our system escalates a stale case **before the new designation is even in hand**, because it knows the list is 30 months old.
 3. **Guarantees, not averages.** "Citation coverage is 1.0 by construction" and "zero true-positive auto-closes" are the two numbers we lead with.
 
 ### Words we use and avoid
@@ -126,7 +126,7 @@ Anything not on this list does not get built.
 Sharper than PLAN.md's version, and already proven in `tests/test_staleness_reversal.py`:
 
 1. **Naive clock.** The archived OFAC list was fetched this morning, so a typical RAG system believes it is fresh. The agent confidently auto-closes. *Fluent, cited, wrong.*
-2. **Our clock.** Same list, but we read the publisher's date: `source_as_of = 2025-03-01`, 18 months past a 3-day SLA. The staleness auditor fires and the case escalates, **before we have even seen the new list.** Point at the two timestamp fields on screen.
+2. **Our clock.** Same list, but we read the publisher's date: `source_as_of = 2024-03-29` (the Wayback capture), 30 months past a 3-day SLA. The staleness auditor fires and the case escalates, **before we have even seen the new list.** Point at the two timestamp fields on screen.
 3. **Live list.** Refresh the list and the designation appears. There's a sanctions hit, a hard escalation and a case file with the SAR draft.
 
 The line to say: *"It didn't need to know the customer was designated. It only needed to know its evidence was too old to trust."*

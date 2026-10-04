@@ -86,6 +86,18 @@ def validate(template_id: str, params: dict[str, Any]) -> Template:
     return t
 
 
+def _typed(bq_type: str, v: Any) -> Any:
+    """The BigQuery client wants date / Decimal objects for DATE / NUMERIC parameters, not strings or floats."""
+    from datetime import date  # noqa: PLC0415
+    from decimal import Decimal  # noqa: PLC0415
+
+    if bq_type == "DATE" and isinstance(v, str):
+        return date.fromisoformat(v[:10])
+    if bq_type == "NUMERIC" and not isinstance(v, Decimal):
+        return Decimal(str(v))
+    return v
+
+
 def run(template_id: str, params: dict[str, Any], *, dataset: str, client: Any = None):
     """Execute a template. Imports BigQuery lazily so the module loads without GCP deps."""
     from google.cloud import bigquery  # noqa: PLC0415
@@ -93,7 +105,7 @@ def run(template_id: str, params: dict[str, Any], *, dataset: str, client: Any =
     t = validate(template_id, params)
     client = client or bigquery.Client()
     cfg = bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ScalarQueryParameter(k, t.params[k], v) for k, v in params.items()],
+        query_parameters=[bigquery.ScalarQueryParameter(k, t.params[k], _typed(t.params[k], v)) for k, v in params.items()],
         maximum_bytes_billed=2 * 1024**3,  # hard cap per query: 2 GiB
     )
     rows = [dict(r) for r in client.query(t.sql.format(dataset=dataset), job_config=cfg).result()]

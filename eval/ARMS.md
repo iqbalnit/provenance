@@ -11,7 +11,7 @@ one row per (arm, alert_id). The console's `/eval` page reads from there.
 | A1 | Ungrounded single Gemini call: alert JSON in, disposition out, no tools | What "just add an LLM" produces | **yes** |
 | A2 | Grounded evidence agents + citations, auto-close on confidence alone | Isolates grounding lift from governance lift | optional (kill list #4) |
 | A3 | Full system: A2 + citation verifier + staleness auditor + policy gate | The product | **yes** |
-| A4 | A3 on the archived (~18-month) OFAC snapshot, run twice: **A4-naive** measures freshness by `retrieved_at` (what typical RAG does) and **A4** by `source_as_of` | The thesis. A4-naive auto-closes cases it should not; A4 escalates them | **yes** |
+| A4 | A3 on the archived OFAC snapshot (Wayback capture 2024-03-29, ~30 months old), run twice: **A4-naive** measures freshness by `retrieved_at` (what typical RAG does) and **A4** by `source_as_of` | The thesis. A4-naive auto-closes cases it should not; A4 escalates them | **yes** |
 
 A1→A3 is the grounding + governance lift. A2→A3 is the governance lift.
 **A4-naive → A4 is the staleness lift, and nobody else will have it.**
@@ -42,6 +42,17 @@ All arms write the same `EvalRow` schema. Offline-mode arm runs use scripted mod
 8. Staleness-induced error rate (A4-naive vs A4)
 9. `escalation_precision`
 10. $/alert, p50/p95 latency (from Cloud Trace)
+
+## Labels and personas (real-data runs)
+
+SAML-D labels say whether a transaction pattern is laundering. They know nothing about sanctions. `provenance.data.personas`:
+- gives every alerted account a synthetic customer, checked never to match the live SDN list;
+- links a small, documented set of benign-looking alerts to **real SDN entries**:
+  - **new:** designated after the archived snapshot;
+  - **old:** on both lists, a control group.
+- marks those alerts `truly_suspicious` with `label_source = "sanctions_exposure"`, because a sanctions match is reportable whatever the transaction pattern.
+
+All other labels are SAML-D's. `artifacts/personas.json` lists every link. The hero is a new designation placed on a golden structuring alert: structuring needs no adverse-media search, so its outcome isolates watchlist freshness.
 
 ## Corpus split (300 alerts, ~95% FP)
 
