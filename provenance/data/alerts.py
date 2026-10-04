@@ -69,6 +69,7 @@ def tune(
     base: Thresholds | None = None,
     target: float = TARGET_FP,
     band: tuple[float, float] = FP_BAND,
+    verbose: bool = False,
 ) -> tuple[Thresholds, list[dict]]:
     grid = grid if grid is not None else DEFAULT_GRID
     base = base or THRESHOLDS
@@ -82,6 +83,8 @@ def tune(
         fp = measure_fp_rate(alerts)
         in_band = band[0] <= fp <= band[1]
         report.append({"overrides": overrides, "n_alerts": len(alerts), "fp_rate": round(fp, 4), "in_band": in_band})
+        if verbose:
+            print(f"  config {len(report)}: {overrides} -> {len(alerts)} alerts, FP {fp:.4f}", flush=True)
         # Prefer in-band, then closest to target, then more alerts.
         score = (not in_band, abs(fp - target), -len(alerts))
         if len(alerts) and (best is None or score < best[0]):
@@ -153,9 +156,11 @@ def to_record(a: Alert, split_name: str) -> dict:
 
 
 def build(input_path: Path, n: int = N_ALERTS, out_dir: Path = ARTIFACTS,
-          grid: dict[str, list] | None = None) -> dict:
+          grid: dict[str, list] | None = None, verbose: bool = False) -> dict:
     txns = load_txns(input_path)
-    thresholds, report = tune(txns, grid)
+    if verbose:
+        print(f"loaded {len(txns)} transactions; tuning rules over {len(list(itertools.product(*(grid or DEFAULT_GRID).values())))} configs", flush=True)
+    thresholds, report = tune(txns, grid, verbose=verbose)
     population = generate_alerts(txns, thresholds)
     chosen = select(population, n)
     splits = split(chosen, _scaled_sizes(len(chosen)))
@@ -196,7 +201,7 @@ def upload(path: Path = ARTIFACTS / "alerts.jsonl", table: str = "alerts") -> st
     from provenance import config  # noqa: PLC0415
 
     client = bigquery.Client(project=config.project())
-    table_id = f"{config.bq_dataset()}.{table}"
+    table_id = f"{config.ensure_bq_dataset(client)}.{table}"
     job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
         autodetect=True,
@@ -214,7 +219,7 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=ARTIFACTS)
     ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
-    s = build(a.input, a.n, a.out)
+    s = build(a.input, a.n, a.out, verbose=True)
     print(json.dumps({k: v for k, v in s.items() if k != "grid"}, indent=2))
     if not FP_BAND[0] <= s["selected_fp_rate"] <= FP_BAND[1]:
         print(f"WARNING: FP rate {s['selected_fp_rate']} outside {FP_BAND}; widen DEFAULT_GRID or resample.")

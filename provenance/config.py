@@ -57,3 +57,13 @@ def model(kind: str) -> str:
     if v.endswith("-latest"):
         raise ConfigError(f"{var} must be a pinned model ID, not a -latest alias")
     return v
+
+
+def ensure_bq_dataset(client) -> str:
+    """Create the BigQuery dataset on first use (location from PROVENANCE_BQ_LOCATION, default US). Returns its ID."""
+    from google.cloud import bigquery  # noqa: PLC0415
+
+    ds = bigquery.Dataset(bq_dataset())
+    ds.location = os.environ.get("PROVENANCE_BQ_LOCATION", "US")
+    client.create_dataset(ds, exists_ok=True)
+    return bq_dataset()

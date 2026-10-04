@@ -92,7 +92,7 @@ def upload(rows: Sequence[EvalRow], table: str = "eval_results") -> str:
     from provenance import config  # noqa: PLC0415
 
     client = bigquery.Client(project=config.project())
-    table_id = f"{config.bq_dataset()}.{table}"
+    table_id = f"{config.ensure_bq_dataset(client)}.{table}"
     job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
         schema=[
