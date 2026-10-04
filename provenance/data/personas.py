@@ -117,8 +117,19 @@ def display_name(e: SdnEntry) -> str:
     return e.name
 
 
+INSTITUTIONAL = ("DIRECTORATE", "MINISTRY", "GOVERNMENT", "ARMED FORCES", "CENTRAL BANK", "INTELLIGENCE",
+                 "REVOLUTIONARY GUARD", "NAVY", "ARMY", "AIR FORCE", "PARTY", "COMMITTEE")
+
+
+def _institutional(name: str) -> bool:
+    """State bodies are not plausible retail-bank customers, so they never become personas."""
+    up = name.upper()
+    return any(w in up for w in INSTITUTIONAL)
+
+
 def _usable(e: SdnEntry) -> bool:
-    return 2 <= len(_tokens(e.name)) <= 6 and e.sdn_type in {"individual", ""}  # skip vessels/aircraft
+    return (2 <= len(_tokens(e.name)) <= 6 and e.sdn_type in {"individual", ""}  # skip vessels/aircraft
+            and not _institutional(e.name))
 
 
 def choose_sdn(archived: WatchlistSnapshot, live: WatchlistSnapshot, hero: str | None) -> tuple[list, list]:
@@ -128,8 +139,11 @@ def choose_sdn(archived: WatchlistSnapshot, live: WatchlistSnapshot, hero: str |
     if hero:
         match = [e for e in new if e.ent_num == hero]
         if not match:
-            raise SystemExit(f"--hero {hero} is not a new designation (absent from archived, present in live)")
-        new = match + [e for e in new if e.ent_num != hero]
+            raise SystemExit(f"--hero {hero} is not a usable new designation (absent from archived, present in "
+                             f"live, an individual or company, not a state body)")
+    else:  # default hero: a private individual is the most plausible retail customer
+        match = [e for e in new if e.sdn_type == "individual"][:1] or new[:1]
+    new = match + [e for e in new if e not in match]
     return new[:N_NEW], old[:N_OLD]
 
 
@@ -165,6 +179,13 @@ def link(alerts: list[dict], new: list, old: list) -> dict[str, dict]:
 def build(alerts: list[dict], archived: WatchlistSnapshot, live: WatchlistSnapshot,
           hero: str | None = None, now: datetime | None = None) -> tuple[list[dict], dict, dict]:
     now = now or datetime.now(UTC)
+    # Idempotent re-runs: undo a previous linkage first. Only SAML-D-benign alerts are ever linked,
+    # so the original label of a sanctions_exposure alert is False.
+    alerts = [
+        {**{k: v for k, v in a.items() if k not in {"label_source", "sdn_ent_num", "designated_after_archive"}},
+         **({"truly_suspicious": False} if a.get("label_source") == "sanctions_exposure" else {})}
+        for a in alerts
+    ]
     index = SdnIndex(live)
     new, old = choose_sdn(archived, live, hero)
     plan = link(alerts, new, old)

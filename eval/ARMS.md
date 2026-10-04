@@ -52,6 +52,8 @@ SAML-D labels say whether a transaction pattern is laundering. They know nothing
   - **old:** on both lists, a control group.
 - marks those alerts `truly_suspicious` with `label_source = "sanctions_exposure"`, because a sanctions match is reportable whatever the transaction pattern.
 
+State bodies (directorates, ministries, armed forces, central banks and similar) are excluded from personas because they aren't plausible retail customers. Re-running the step is idempotent.
+
 All other labels are SAML-D's. `artifacts/personas.json` lists every link. The hero is a new designation placed on a golden structuring alert: structuring needs no adverse-media search, so its outcome isolates watchlist freshness.
 
 ## Corpus split (300 alerts, ~95% FP)

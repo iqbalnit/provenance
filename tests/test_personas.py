@@ -95,3 +95,20 @@ def test_alerts_schema_covers_every_persona_key_and_ids_are_strings():
     assert {n: t for n, t, _ in ALERTS_SCHEMA}["account_id"] == "STRING"
     row = _plain({"alert_id": "a", "account_id": 1234567, "sdn_ent_num": 99, "txn_ids": [1, "t2"]})
     assert row["account_id"] == "1234567" and row["sdn_ent_num"] == "99" and row["txn_ids"] == ["1", "t2"]
+
+
+def test_rerun_is_idempotent():
+    out1, c1, m1 = personas.build(alerts(), ARCHIVED, LIVE, now=NOW)
+    out2, c2, m2 = personas.build(out1, ARCHIVED, LIVE, now=NOW)
+    assert out2 == out1 and c2 == c1 and m2 == m1
+    assert sum(a["truly_suspicious"] for a in out2) == sum(a["truly_suspicious"] for a in out1)
+
+
+def test_institutions_excluded_and_default_hero_is_an_individual(monkeypatch):
+    live = snap(OLD + NEW + [SdnEntry("300", "DIRECTORATE OF INTELLIGENCE OF EXAMPLELAND", "", "X")], LIVE.as_of)
+    _, _, manifest = personas.build(alerts(), ARCHIVED, live, now=NOW)
+    assert "300" not in {x["ent_num"] for x in manifest["linked"]}
+    hero = next(x for x in manifest["linked"] if x["hero"])
+    assert hero["ent_num"] == "201"  # the only new individual
+    with pytest.raises(SystemExit):
+        personas.build(alerts(), ARCHIVED, live, hero="300", now=NOW)
