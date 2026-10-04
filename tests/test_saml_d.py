@@ -41,3 +41,11 @@ def test_account_rows_match_schema_and_templates(tmp_path):
             "payment_type", "account_id", "ts", "txn_id",
         }
         assert used <= set(cols), (t.id, used - set(cols))
+
+
+def test_amounts_are_bigquery_numeric_safe():
+    r = {"Txn_id": "t1", "Time": "10:00:00", "Date": "2023-01-01", "Sender_account": "a", "Receiver_account": "b",
+         "Amount": "3547.3725420122696", "Payment_currency": "UK pounds", "Received_currency": "UK pounds",
+         "Sender_bank_location": "UK", "Receiver_bank_location": "UK", "Payment_type": "Cash",
+         "Is_laundering": "0", "Laundering_type": "Normal"}
+    assert {x["amount"] for x in to_account_rows(r)} == {"3547.37"}

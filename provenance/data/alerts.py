@@ -21,6 +21,7 @@ import csv
 import hashlib
 import itertools
 import json
+import time
 from collections import defaultdict
 from collections.abc import Sequence
 from pathlib import Path
@@ -32,6 +33,7 @@ from provenance.rules.engine import (
     Thresholds,
     Txn,
     generate_alerts,
+    group_by_account,
     measure_fp_rate,
 )
 
@@ -70,21 +72,25 @@ def tune(
     target: float = TARGET_FP,
     band: tuple[float, float] = FP_BAND,
     verbose: bool = False,
+    grouped: dict[str, list[Txn]] | None = None,
 ) -> tuple[Thresholds, list[dict]]:
     grid = grid if grid is not None else DEFAULT_GRID
     base = base or THRESHOLDS
+    grouped = grouped if grouped is not None else group_by_account(txns)
+    t0 = time.monotonic()
     keys = list(grid)
     report: list[dict] = []
     best: tuple[tuple, Thresholds] | None = None
     for values in itertools.product(*(grid[k] for k in keys)) if keys else [()]:
         overrides = dict(zip(keys, values))
         th = _apply(base, overrides)
-        alerts = generate_alerts(txns, th)
+        alerts = generate_alerts(txns, th, grouped=grouped)
         fp = measure_fp_rate(alerts)
         in_band = band[0] <= fp <= band[1]
         report.append({"overrides": overrides, "n_alerts": len(alerts), "fp_rate": round(fp, 4), "in_band": in_band})
         if verbose:
-            print(f"  config {len(report)}: {overrides} -> {len(alerts)} alerts, FP {fp:.4f}", flush=True)
+            print(f"  config {len(report)}: {overrides} -> {len(alerts)} alerts, FP {fp:.4f} "
+                  f"({time.monotonic() - t0:.0f}s elapsed)", flush=True)
         # Prefer in-band, then closest to target, then more alerts.
         score = (not in_band, abs(fp - target), -len(alerts))
         if len(alerts) and (best is None or score < best[0]):
@@ -160,8 +166,9 @@ def build(input_path: Path, n: int = N_ALERTS, out_dir: Path = ARTIFACTS,
     txns = load_txns(input_path)
     if verbose:
         print(f"loaded {len(txns)} transactions; tuning rules over {len(list(itertools.product(*(grid or DEFAULT_GRID).values())))} configs", flush=True)
-    thresholds, report = tune(txns, grid, verbose=verbose)
-    population = generate_alerts(txns, thresholds)
+    grouped = group_by_account(txns)
+    thresholds, report = tune(txns, grid, verbose=verbose, grouped=grouped)
+    population = generate_alerts(txns, thresholds, grouped=grouped)
     chosen = select(population, n)
     splits = split(chosen, _scaled_sizes(len(chosen)))
     records = [to_record(a, splits[a.alert_id]) for a in chosen]

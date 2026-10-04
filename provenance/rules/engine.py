@@ -81,7 +81,8 @@ class Alert:
         return f"alt_{h.hexdigest()[:10]}"
 
 
-def _by_account(txns: Iterable[Txn]) -> dict[str, list[Txn]]:
+def group_by_account(txns: Iterable[Txn]) -> dict[str, list[Txn]]:
+    """Each account's transactions (either side), sorted by time. Compute once and reuse across rule configs."""
     acc: dict[str, list[Txn]] = defaultdict(list)
     for t in txns:
         acc[t.sender].append(t)
@@ -152,10 +153,11 @@ RULES = {
 }
 
 
-def generate_alerts(txns: Iterable[Txn], thresholds: Thresholds | None = None) -> list[Alert]:
+def generate_alerts(txns: Iterable[Txn], thresholds: Thresholds | None = None,
+                    grouped: dict[str, list[Txn]] | None = None) -> list[Alert]:
     thresholds = thresholds or THRESHOLDS
     alerts: list[Alert] = []
-    for account, acc_txns in _by_account(txns).items():
+    for account, acc_txns in (grouped if grouped is not None else group_by_account(txns)).items():
         for name, rule in RULES.items():
             alerts.extend(rule(account, acc_txns, thresholds[name]))
     return alerts

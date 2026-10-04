@@ -89,7 +89,7 @@ def to_account_rows(r: dict) -> list[dict]:
         "txn_id": r["Txn_id"],
         "booking_date": ts.date().isoformat(),
         "ts": ts.isoformat(),
-        "amount": str(r["Amount"]),
+        "amount": f"{float(r['Amount']):.2f}",  # BigQuery NUMERIC allows <= 9 decimals; SAML-D has float noise
         "payment_type": r["Payment_type"],
         "sender_location": r["Sender_bank_location"],
         "receiver_location": r["Receiver_bank_location"],
