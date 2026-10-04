@@ -83,3 +83,15 @@ def test_load_any_local_path_takes_as_of_from_folder(tmp_path):
     p.write_text('100,"KNOWN TRADING LLC","-0-","SDGT"\n')
     s = ofac.load_any(str(p))
     assert s.as_of == datetime(2024, 3, 29, tzinfo=UTC) and len(s.entries) == 1
+
+
+def test_alerts_schema_covers_every_persona_key_and_ids_are_strings():
+    from provenance.data.alerts import ALERTS_SCHEMA
+    from provenance.runtime import _plain
+
+    out, _, _ = personas.build(alerts(), ARCHIVED, LIVE, now=NOW)
+    cols = {n for n, _, _ in ALERTS_SCHEMA}
+    assert set().union(*(a.keys() for a in out)) <= cols
+    assert {n: t for n, t, _ in ALERTS_SCHEMA}["account_id"] == "STRING"
+    row = _plain({"alert_id": "a", "account_id": 1234567, "sdn_ent_num": 99, "txn_ids": [1, "t2"]})
+    assert row["account_id"] == "1234567" and row["sdn_ent_num"] == "99" and row["txn_ids"] == ["1", "t2"]

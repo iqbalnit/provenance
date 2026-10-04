@@ -102,7 +102,13 @@ def from_gcp(mode: str = "gemini") -> Deps:  # pragma: no cover - needs GCP
 
 def _plain(row: dict) -> dict:
     """BigQuery returns datetimes/dates; the agent graph expects the same ISO strings as alerts.jsonl."""
-    return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
+    out = {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in row.items()}
+    for k in ("alert_id", "account_id", "sdn_ent_num"):  # IDs are always strings, whatever the column type
+        if out.get(k) is not None:
+            out[k] = str(out[k])
+    if "txn_ids" in out:
+        out["txn_ids"] = [str(t) for t in out["txn_ids"] or []]
+    return out
 
 
 _deps: Deps | None = None

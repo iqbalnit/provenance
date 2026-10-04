@@ -205,6 +205,18 @@ def _jsonable(t: Thresholds) -> dict:
     return {r: {k: sorted(v) if isinstance(v, set) else v for k, v in p.items()} for r, p in t.items()}
 
 
+# Explicit schema: autodetect turns all-digit SAML-D account IDs into INTEGER, which then
+# fails to join with the STRING transactions table and the customers.json keys.
+ALERTS_SCHEMA = [
+    ("alert_id", "STRING", "REQUIRED"), ("account_id", "STRING", "REQUIRED"), ("rule", "STRING", "NULLABLE"),
+    ("typology_hint", "STRING", "NULLABLE"), ("window_start", "STRING", "NULLABLE"),
+    ("window_end", "STRING", "NULLABLE"), ("txn_ids", "STRING", "REPEATED"),
+    ("truly_suspicious", "BOOL", "NULLABLE"), ("laundering_types", "STRING", "REPEATED"),
+    ("split", "STRING", "NULLABLE"), ("label_source", "STRING", "NULLABLE"),
+    ("sdn_ent_num", "STRING", "NULLABLE"), ("designated_after_archive", "BOOL", "NULLABLE"),
+]
+
+
 def upload(path: Path = ARTIFACTS / "alerts.jsonl", table: str = "alerts") -> str:
     from google.cloud import bigquery  # noqa: PLC0415
 
@@ -214,7 +226,7 @@ def upload(path: Path = ARTIFACTS / "alerts.jsonl", table: str = "alerts") -> st
     table_id = f"{config.ensure_bq_dataset(client)}.{table}"
     job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-        autodetect=True,
+        schema=[bigquery.SchemaField(n, t, mode=m) for n, t, m in ALERTS_SCHEMA],
         write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
     )
     with open(path, "rb") as f:

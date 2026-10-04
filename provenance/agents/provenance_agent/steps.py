@@ -50,12 +50,13 @@ class CaseInit(BaseAgent):
         alert = {k: v for k, v in d.alerts[st["alert_id"]].items() if k not in HIDDEN_ALERT_FIELDS}
         customer = d.customers.get(alert["account_id"], {"name": f"account {alert['account_id']}"})
         # Tools may only query the alerted account and its counterparties in the alert window.
+        alert["account_id"] = str(alert["account_id"])
         scope = {alert["account_id"]}
         for r in d.txns.run("account_activity_window_v1", {
             "account_id": alert["account_id"],
             "start_date": alert["window_start"][:10], "end_date": alert["window_end"][:10],
         }).rows:
-            scope.add(r["counterparty_account"])
+            scope.add(str(r["counterparty_account"]))
         d.repo.create_case(
             Case(case_id=st["case_id"], alert_id=alert["alert_id"]),
             alert=alert, customer=customer, snapshot=st["snapshot"],
