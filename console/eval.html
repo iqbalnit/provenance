@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provenance Evaluation</title>
+<link rel="icon" href="/provenance-mark.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #F6F7F9; --panel: #FFFFFF; --ink: #101826; --muted: #5B6474; --line: #E3E6EB; --grid: #EEF0F3;
+  --amber: #D97706; --amber-soft: #FEF3E2; --ok: #0F7B4B; --ok-soft: #E6F4EC; --bad: #B42318; --bad-soft: #FDECEA;
+  --chip: #EEF1F5; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* calibration series: fixed per arm, validated (dataviz validator, all-pairs, both modes) */
+  --s-a3: #2a78d6; --s-a1: #eb6834; --s-a4: #1baf7a;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0B111B; --panel: #111A27; --ink: #F8FAFC; --muted: #9AA4B2; --line: #243044; --grid: #1B2536;
+    --amber-soft: #3A2A10; --ok: #4ADE80; --ok-soft: #0F2E1F; --bad: #F87171; --bad-soft: #3A1616; --chip: #1B2638;
+    --s-a3: #3987e5; --s-a1: #d95926; --s-a4: #199e70; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+header img { width: 28px; height: 28px; }
+header h1 { font-size: 18px; font-weight: 600; margin: 0; }
+header nav { margin-left: auto; display: flex; gap: 14px; }
+header nav a { color: var(--muted); text-decoration: none; } header nav a.on { color: var(--ink); font-weight: 600; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px; display: grid; gap: 16px; }
+main > * { min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.banner { padding: 10px 14px; border-radius: 8px; background: var(--amber-soft); color: var(--amber); font-weight: 600; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.tile .k { font-size: 12px; color: var(--muted); }
+.tile .v { font-size: 28px; font-weight: 700; margin-top: 2px; }
+.tile .s { font-size: 12px; color: var(--muted); }
+.wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
+th { text-align: right; font-weight: 600; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+tr.product td { background: var(--chip); font-weight: 600; }
+.arm { font-family: var(--mono); font-size: 12px; } .lbl { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+.st-bad { color: var(--bad); font-weight: 700; } .st-ok { color: var(--ok); font-weight: 700; }
+.lift { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+.lift .side { border-radius: 10px; padding: 14px 16px; }
+.lift .bad { background: var(--bad-soft); } .lift .good { background: var(--ok-soft); }
+.lift .n { font-size: 30px; font-weight: 800; }
+.lift .arrow { font-size: 22px; color: var(--muted); }
+.chart-wrap { display: grid; grid-template-columns: minmax(0, 560px) 1fr; gap: 20px; align-items: start; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 2px; display: inline-block; }
+svg text { fill: var(--muted); font-size: 11px; }
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--panel); padding: 6px 9px; border-radius: 6px; font-size: 12px; display: none; }
+details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 8px; }
+.muted { color: var(--muted); }
+.empty { color: var(--muted); padding: 20px 0; }
+@media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, 1fr); }
+  .lift, .chart-wrap { grid-template-columns: 1fr; }
+  .lift .arrow { display: none; }
+  main { padding: 16px; } header { padding: 12px 16px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <img src="/provenance-mark.svg" alt="">
+  <h1>Provenance</h1>
+  <nav><a href="/">Console</a><a href="/eval.html" class="on">Evaluation</a></nav>
+</header>
+<main>
+  <div id="banner" class="banner" hidden>PLUMBING CHECK: scripted models on the fictional demo bundle. These are not results.</div>
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card">
+    <h2>Every arm, same alerts: lead with suspicious alerts auto-closed</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Arm</th><th>TP auto-closes</th><th>FN rate on auto-close</th><th>Auto-close rate</th><th>Escalation precision</th>
+        <th>Citation coverage</th><th>Hallucinated entities</th><th>ECE</th><th>Analyst-hours saved</th><th>n</th></tr></thead>
+      <tbody id="arms"></tbody>
+    </table></div>
+    <div id="none" class="empty" hidden>No eval runs yet. Run <code>python -m provenance.eval.arms --all</code>.</div>
+  </section>
+
+  <section class="card" id="liftcard" hidden>
+    <h2>The staleness lift: same archived list, two clocks</h2>
+    <div class="lift">
+      <div class="side bad"><div class="muted">Fetch-date clock (typical RAG)</div><div class="n" id="l-naive"></div><div id="l-naive-s"></div></div>
+      <div class="arrow">→</div>
+      <div class="side good"><div class="muted">Publisher-date clock (Provenance)</div><div class="n" id="l-asof"></div><div id="l-asof-s"></div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Calibration: is a stated confidence the real hit rate?</h2>
+    <div class="chart-wrap">
+      <div>
+        <div class="legend" id="legend"></div>
+        <svg id="chart" viewBox="0 0 520 380" width="100%" role="img" aria-label="Reliability diagram"></svg>
+      </div>
+      <div class="muted">
+        Each point bins decisions by the model's confidence that its decision is correct (x) against how often it actually was (y).
+        Points on the dashed diagonal are perfectly calibrated. Points below it are overconfident.
+        ECE is the weighted average gap. Hover a point for its bin.
+        <details><summary>Show data table</summary><div class="wrap"><table style="min-width:0"><thead><tr><th>Arm</th><th>Mean confidence</th><th>Accuracy</th><th>n</th></tr></thead><tbody id="bins"></tbody></table></div></details>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="tip" id="tip"></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const pct = (v) => v == null ? "–" : `${(v * 100).toFixed(v > 0 && v < 0.1 ? 1 : 0)}%`;
+const num = (v, d = 2) => v == null ? "–" : (+v).toFixed(d);
+const SERIES = { "A3": "--s-a3", "A1": "--s-a1", "A4": "--s-a4" };  // color follows the arm, never rank
+
+async function boot() {
+  const r = await (await fetch("/api/eval")).json();
+  $("banner").hidden = !r.plumbing_only;
+  if (!r.arms.length) { $("none").hidden = false; return; }
+  const by = Object.fromEntries(r.arms.map((a) => [a.arm, a]));
+  const hero = by["A3"] || r.arms[r.arms.length - 1];
+  const s = hero.summary;
+  $("tiles").innerHTML = [
+    ["Suspicious alerts auto-closed", s.tp_auto_closes, `${hero.arm} · target 0 · of ${s.positives} suspicious`, s.tp_auto_closes > 0],
+    ["Auto-close rate", pct(s.auto_close_rate), `${hero.arm} · ${s.n} alerts`],
+    ["Analyst-hours saved", num(s.analyst_hours_saved, 1), "at 25 min per alert"],
+    ["Citation coverage", pct(s.citation_coverage_mean), "structural: uncited drafts are rejected"],
+  ].map(([k, v, sub, bad]) => `<div class="tile"><div class="k">${esc(k)}</div><div class="v ${bad ? "st-bad" : ""}">${esc(v)}</div><div class="s">${esc(sub)}</div></div>`).join("");
+
+  $("arms").innerHTML = r.arms.map((a) => {
+    const x = a.summary;
+    const tp = x.tp_auto_closes > 0 ? `<span class="st-bad">✗ ${x.tp_auto_closes}</span>` : `<span class="st-ok">✓ 0</span>`;
+    return `<tr class="${a.arm === "A3" ? "product" : ""}"><td><span class="arm">${esc(a.arm)}</span><span class="lbl">${esc(a.label)}${a.plumbing_only ? " · scripted" : ""}</span></td>
+      <td>${tp}</td><td>${pct(x.fn_rate_on_auto_close)}</td><td>${pct(x.auto_close_rate)}</td><td>${pct(x.escalation_precision)}</td>
+      <td>${pct(x.citation_coverage_mean)}</td><td>${x.hallucinated_entity_rate_mean == null ? "–" : pct(x.hallucinated_entity_rate_mean)}</td>
+      <td>${num(x.ece)}</td><td>${num(x.analyst_hours_saved, 1)}</td><td>${x.n}</td></tr>`;
+  }).join("");
+
+  if (r.staleness_lift) {
+    const l = r.staleness_lift;
+    $("liftcard").hidden = false;
+    $("l-naive").textContent = l.naive_tp_auto_closes; $("l-asof").textContent = l.asof_tp_auto_closes;
+    $("l-naive-s").textContent = `suspicious alerts auto-closed · FN rate ${pct(l.naive_fn_rate)}`;
+    $("l-asof-s").textContent = `suspicious alerts auto-closed · FN rate ${pct(l.asof_fn_rate)}`;
+  }
+  chart(r.arms.filter((a) => SERIES[a.arm] && a.reliability.length));
+}
+
+function chart(arms) {
+  const W = 520, H = 380, m = { l: 58, r: 70, t: 12, b: 40 };
+  const x = (v) => m.l + v * (W - m.l - m.r), y = (v) => H - m.b - v * (H - m.t - m.b);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const t = i / 4;
+    g += `<line x1="${x(0)}" x2="${x(1)}" y1="${y(t)}" y2="${y(t)}" stroke="${css("--grid")}" stroke-width="1"/>`;
+    g += `<text x="${m.l - 8}" y="${y(t) + 4}" text-anchor="end">${t * 100}%</text>`;
+    g += `<text x="${x(t)}" y="${H - m.b + 18}" text-anchor="middle">${t * 100}%</text>`;
+  }
+  g += `<text x="${x(0.5)}" y="${H - 6}" text-anchor="middle">Stated confidence</text>`;
+  g += `<text transform="translate(14 ${y(0.5)}) rotate(-90)" text-anchor="middle">Actual accuracy</text>`;
+  g += `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="${css("--muted")}" stroke-width="1" stroke-dasharray="4 4"/>`;
+  const rows = [], labels = [];
+  for (const a of arms) {
+    const c = css(SERIES[a.arm]);
+    const pts = a.reliability.slice().sort((p, q) => p.confidence - q.confidence);
+    g += `<polyline fill="none" stroke="${c}" stroke-width="2" points="${pts.map((p) => `${x(p.confidence)},${y(p.accuracy)}`).join(" ")}"/>`;
+    for (const p of pts) {
+      g += `<circle cx="${x(p.confidence)}" cy="${y(p.accuracy)}" r="4.5" fill="${c}" stroke="${css("--panel")}" stroke-width="2"/>`;
+      g += `<circle class="hit" cx="${x(p.confidence)}" cy="${y(p.accuracy)}" r="12" fill="transparent" data-t="${esc(`${a.arm}: confidence ${pct(p.confidence)}, accuracy ${pct(p.accuracy)}, n=${p.n}`)}"/>`;
+      rows.push(`<tr><td class="arm">${esc(a.arm)}</td><td>${pct(p.confidence)}</td><td>${pct(p.accuracy)}</td><td>${p.n}</td></tr>`);
+    }
+    const last = pts[pts.length - 1];
+    labels.push({ arm: a.arm, x: x(last.confidence) + 10, y: y(last.accuracy) + 4 });
+  }
+  // Direct labels at line ends; nudge apart so they never collide.
+  labels.sort((p, q) => p.y - q.y);
+  for (let i = 1; i < labels.length; i++) labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 14);
+  const maxX = Math.max(...labels.map((l) => l.x), 0);
+  for (const l of labels) g += `<text x="${maxX}" y="${l.y}" style="fill:${css("--ink")};font-weight:600">${esc(l.arm)}</text>`;
+  $("chart").innerHTML = g;
+  $("legend").innerHTML = arms.map((a) => `<span><i style="background:var(${SERIES[a.arm]})"></i>${esc(a.arm)} · ${esc(a.label)}</span>`).join("")
+    + `<span><i style="border-top:1px dashed var(--muted);height:0"></i>perfect calibration</span>`;
+  $("bins").innerHTML = rows.join("");
+  const tip = $("tip");
+  $("chart").querySelectorAll(".hit").forEach((h) => {
+    h.addEventListener("mouseenter", (e) => { tip.textContent = h.dataset.t; tip.style.display = "block"; });
+    h.addEventListener("mousemove", (e) => { tip.style.left = `${e.clientX + 12}px`; tip.style.top = `${e.clientY + 12}px`; });
+    h.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  });
+  if (!arms.length) $("chart").innerHTML = `<text x="260" y="190" text-anchor="middle">No confidence scores in these runs yet.</text>`;
+}
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+Txn_id,Time,Date,Sender_account,Receiver_account,Amount,Payment_currency,Received_currency,Sender_bank_location,Receiver_bank_location,Payment_type,Is_laundering,Laundering_type
+d1,10:00:00,2026-08-04,1204993310,8830112040,4200.00,UK pounds,UK pounds,UK,UK,Cross-border,0,Normal
+d2,15:00:00,2026-08-20,8830112040,3301558821,1150.00,UK pounds,UK pounds,UK,UK,Debit card,0,Normal
+d3,09:15:00,2026-09-10,5502871133,8830112040,22000.00,UK pounds,UK pounds,Turkey,UK,Cross-border,0,Normal
+d4,15:40:00,2026-09-11,8830112040,7719004452,19500.00,UK pounds,UK pounds,UK,UAE,Cross-border,0,Normal
+d5,17:00:00,2026-09-01,CASH,4410098823,8900.00,UK pounds,UK pounds,UK,UK,Cash Deposit,0,Normal
+d6,17:00:00,2026-09-03,CASH,4410098823,9200.00,UK pounds,UK pounds,UK,UK,Cash Deposit,0,Normal
+d7,17:00:00,2026-09-06,CASH,4410098823,9450.00,UK pounds,UK pounds,UK,UK,Cash Deposit,0,Normal
+d8,11:00:00,2026-09-08,4410098823,2200817764,14800.00,UK pounds,UK pounds,UK,UK,Cheque,0,Normal
+d9,12:00:00,2026-09-02,8810223345,6627340019,51000.00,UK pounds,UK pounds,UK,UK,Cross-border,0,Normal
+d10,10:00:00,2026-09-15,6627340019,9910203344,48000.00,UK pounds,UK pounds,UK,UAE,Cross-border,0,Normal
+d11,10:00:00,2026-09-16,6610283745,5519920031,26000.00,UK pounds,UK pounds,UK,UK,Cross-border,0,Normal
+d12,16:30:00,2026-09-17,5519920031,4428190037,24500.00,UK pounds,UK pounds,UK,UK,Cross-border,0,Normal

@@ -1,0 +1,10 @@
+{
+  "description": "Offline demo bundle. All names, accounts and media are FICTIONAL fixtures. Swap in the real hero persona via PROVENANCE_DATA=gcp.",
+  "transactions_as_of": "today",
+  "transactions_uri": "local://demo/transactions.csv",
+  "kyc_uri_prefix": "local://demo/kyc",
+  "snapshots": {
+    "archived": {"file": "snapshots/sdn_archived.csv", "as_of": "2025-03-01T00:00:00+00:00", "uri": "local://demo/ofac/2025-03-01/sdn.csv"},
+    "live": {"file": "snapshots/sdn_live.csv", "as_of": "today", "uri": "local://demo/ofac/live/sdn.csv"}
+  }
+}

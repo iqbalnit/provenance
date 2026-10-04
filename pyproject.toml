@@ -1,0 +1,35 @@
+[project]
+name = "provenance"
+version = "0.1.0"
+description = "AML triage agent that cannot emit an uncited assertion, and escalates when its evidence goes stale."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+# Everything that touches Google Cloud. The deterministic core must never need these.
+gcp = [
+    "google-adk",
+    "google-genai",
+    "google-cloud-bigquery",
+    "google-cloud-firestore",
+    "google-cloud-storage",
+    "fastapi",
+    "uvicorn[standard]",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["provenance*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

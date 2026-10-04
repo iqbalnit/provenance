@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "console",
+    "ignore": ["firebase.json", "**/.*"],
+    "rewrites": [
+      { "source": "/api/**", "run": { "serviceId": "provenance", "region": "us-central1" } },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  }
+}

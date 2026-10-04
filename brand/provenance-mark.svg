@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Provenance">
+  <circle cx="64" cy="26" r="11" fill="#D97706"/>
+  <path d="M64 37 L64 66 M26 66 L102 66 M26 66 L26 90 M64 66 L64 90 M102 66 L102 90"
+        stroke="#101826" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="26" cy="99" r="9" fill="#FFFFFF" stroke="#101826" stroke-width="7"/>
+  <circle cx="64" cy="99" r="9" fill="#FFFFFF" stroke="#101826" stroke-width="7"/>
+  <circle cx="102" cy="99" r="9" fill="#FFFFFF" stroke="#101826" stroke-width="7"/>
+</svg>

@@ -1,0 +1,34 @@
+{
+  "8830112040": {
+    "name": "Placeholder Persona Hero",
+    "occupation": "Import/export consultant",
+    "expected_monthly_volume": "5,000-10,000",
+    "source_of_funds": "Consulting fees",
+    "country": "UK",
+    "kyc_reviewed_at": "2026-02-14T00:00:00+00:00"
+  },
+  "4410098823": {
+    "name": "Corner Grocer Ltd",
+    "occupation": "Retail grocery (cash-intensive business)",
+    "expected_monthly_volume": "40,000-60,000",
+    "source_of_funds": "Retail sales",
+    "country": "UK",
+    "kyc_reviewed_at": "2026-05-02T00:00:00+00:00"
+  },
+  "6627340019": {
+    "name": "Example Freight Forwarders LLC",
+    "occupation": "Freight forwarding",
+    "expected_monthly_volume": "20,000-30,000",
+    "source_of_funds": "Logistics contracts",
+    "country": "UK",
+    "kyc_reviewed_at": "2025-11-20T00:00:00+00:00"
+  },
+  "5519920031": {
+    "name": "Placeholder Trading Co",
+    "occupation": "Wholesale electronics",
+    "expected_monthly_volume": "30,000-50,000",
+    "source_of_funds": "Trading revenue",
+    "country": "UK",
+    "kyc_reviewed_at": "2026-04-10T00:00:00+00:00"
+  }
+}

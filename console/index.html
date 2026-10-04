@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provenance Console</title>
+<link rel="icon" href="/provenance-mark.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #F6F7F9; --panel: #FFFFFF; --ink: #101826; --muted: #5B6474; --line: #E3E6EB;
+  --amber: #D97706; --amber-soft: #FEF3E2; --ok: #0F7B4B; --ok-soft: #E6F4EC;
+  --bad: #B42318; --bad-soft: #FDECEA; --chip: #EEF1F5; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0B111B; --panel: #111A27; --ink: #F8FAFC; --muted: #9AA4B2; --line: #243044;
+    --amber-soft: #3A2A10; --ok: #4ADE80; --ok-soft: #0F2E1F; --bad: #F87171; --bad-soft: #3A1616; --chip: #1B2638; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); }
+header img { width: 28px; height: 28px; }
+header h1 { font-size: 18px; font-weight: 600; margin: 0; }
+header .tag { color: var(--muted); }
+.badge { margin-left: auto; font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.badge.offline { background: var(--amber-soft); color: var(--amber); }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px; display: grid; gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.card h2 { overflow-wrap: anywhere; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.controls { display: grid; grid-template-columns: 2fr 1.4fr 1.6fr auto auto; gap: 14px; align-items: end; }
+label.f { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+select, button { font: inherit; }
+select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 8px 10px; cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--panel); }
+.btn { padding: 9px 16px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink); color: var(--panel); cursor: pointer; font-weight: 600; }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn:disabled { opacity: .5; cursor: default; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.step { padding: 5px 12px; border-radius: 999px; background: var(--chip); color: var(--muted); font-size: 12px; }
+.step.done { background: var(--ok-soft); color: var(--ok); }
+.step.now { background: var(--amber-soft); color: var(--amber); font-weight: 600; }
+.reversal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tile { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: var(--panel); }
+.tile.sel { outline: 2px solid var(--amber); }
+.tile .k { font-size: 12px; color: var(--muted); }
+.tile .d { font-size: 18px; font-weight: 700; margin: 4px 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; }
+.decision { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 10px; }
+.decision.auto_close { background: var(--ok-soft); color: var(--ok); }
+.decision.escalate { background: var(--amber-soft); color: var(--amber); }
+.decision .big { font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+.decision .sub { color: var(--ink); opacity: .8; }
+.gate li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); list-style: none; }
+.gate ul { padding: 0; margin: 0; }
+.gate .y { color: var(--ok); font-weight: 700; } .gate .n { color: var(--bad); font-weight: 700; }
+.gate .det { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.mono, .mono { font-family: var(--mono); font-size: 12px; }
+tr.stale td { background: var(--bad-soft); }
+tr.hl td { background: var(--amber-soft); }
+.pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.pill.stale { background: var(--bad); color: #fff; }
+.pill.hit { background: var(--bad); color: #fff; }
+.ts { white-space: nowrap; }
+.ts b { font-weight: 700; }
+.draft { overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.draft .h { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.draft.rej .h { color: var(--bad); } .draft.acc .h { color: var(--ok); }
+.sent.bad { background: var(--bad-soft); text-decoration: underline wavy var(--bad); }
+.cite { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border-radius: 4px; background: var(--chip); cursor: pointer; }
+pre.sar { white-space: pre-wrap; font-family: var(--mono); font-size: 12px; background: var(--chip); padding: 12px; border-radius: 8px; margin: 0; }
+.muted { color: var(--muted); }
+.plan { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.hide { display: none; }
+header nav { display: flex; gap: 14px; margin-left: auto; }
+header nav a { color: var(--muted); text-decoration: none; } header nav a.on { color: var(--ink); font-weight: 600; }
+header .badge { margin-left: 0; }
+.controls { grid-template-columns: 2fr 1.4fr 1.6fr auto auto auto; }
+.review { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
+.review .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.review input { flex: 1; min-width: 160px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; }
+.btn.sm { padding: 6px 12px; font-weight: 500; }
+.hist { font-size: 12px; color: var(--muted); }
+.probe { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 4px; font-size: 12px; }
+.draft.probe-card { border-style: dashed; border-color: var(--bad); }
+.draft.probe-card .h { color: var(--bad); }
+.notice { padding: 10px 14px; border-radius: 8px; background: var(--amber-soft); color: var(--amber); margin-top: 10px; }
+.notice a { color: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
+#sweepout { font-size: 13px; }
+main > *, .grid2 > *, .controls > * { min-width: 0; }
+select { width: 100%; }
+.seg button { min-width: 0; }
+.ledger-wrap { overflow-x: auto; }
+@media (max-width: 900px) {
+  .controls, .grid2, .reversal { grid-template-columns: 1fr; }
+  main { padding: 16px; }
+  header { padding: 12px 16px; flex-wrap: wrap; }
+  header .tag { display: none; }
+  table { min-width: 760px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <img src="/provenance-mark.svg" alt="">
+  <h1>Provenance</h1>
+  <span class="tag">AML triage that cannot say what it cannot cite</span>
+  <nav><a href="/" class="on">Console</a><a href="/eval.html">Evaluation</a></nav>
+  <span id="mode" class="badge">…</span>
+</header>
+<main>
+  <section class="card">
+    <h2>Run an alert</h2>
+    <div class="controls">
+      <label class="f">Alert<select id="alert"></select></label>
+      <label class="f">Sanctions list<div class="seg" id="snap"></div></label>
+      <label class="f">Freshness clock<div class="seg" id="basis">
+        <button data-v="source_as_of" class="on">Publisher date</button>
+        <button data-v="retrieved_at">Fetch date (naive)</button></div></label>
+      <button class="btn" id="run">Run</button>
+      <button class="btn ghost" id="rev" title="Run the hero alert three ways side by side">Run the reversal</button>
+      <button class="btn ghost" id="sweep" title="Re-check every auto-closed case against the live list">Run nightly sweep</button>
+    </div>
+  </section>
+
+  <section class="card hide" id="revcard">
+    <h2>The reversal: same alert, three ways</h2>
+    <div class="reversal" id="tiles"></div>
+  </section>
+
+  <section class="card hide" id="sweepcard">
+    <h2>Staleness sweep: re-check auto-closed cases against today's evidence</h2>
+    <div id="sweepout"></div>
+  </section>
+
+  <section class="card hide" id="casecard">
+    <h2 id="casetitle">Case</h2>
+    <div class="steps" id="steps"></div>
+    <div class="plan" id="plan"></div>
+  </section>
+
+  <div class="grid2 hide" id="resultgrid">
+    <section class="card">
+      <h2>Decision</h2>
+      <div id="decision"></div>
+      <div id="reopen"></div>
+      <div class="review hide" id="review">
+        <div class="muted">Analyst review: your call becomes the ground-truth label for the next eval run.</div>
+        <div class="row"><input id="note" placeholder="Note (optional)">
+          <button class="btn sm" data-v="suspicious">Suspicious: escalate</button>
+          <button class="btn ghost sm" data-v="false_positive">False positive: close</button></div>
+        <div class="hist" id="hist"></div>
+      </div>
+      <div class="gate" style="margin-top:14px"><h2>Policy gate: all six must pass to auto-close</h2><ul id="gate"></ul></div>
+    </section>
+    <section class="card">
+      <h2>Disposition drafts: the deterministic verifier rejects uncited sentences</h2>
+      <div id="drafts"></div>
+      <div class="probe hide" id="probebar">
+        <button class="btn ghost sm" id="probe">Probe the verifier</button>
+        <span class="muted">Adds one sentence with no citation to the accepted narrative and re-runs the verifier and gate. The case's decision is not changed.</span>
+      </div>
+      <div id="probes"></div>
+    </section>
+  </div>
+
+  <section class="card hide" id="ledgercard">
+    <h2>Claim ledger: every fact, its source, and two timestamps</h2>
+    <div class="ledger-wrap"><table>
+      <thead><tr><th>Claim</th><th>Agent</th><th>Assertion</th><th>Source</th><th>Publisher says true as of</th><th>We fetched at</th><th>SLA</th><th></th></tr></thead>
+      <tbody id="ledger"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card hide" id="sarcard">
+    <h2>SAR draft (never filed automatically)</h2>
+    <pre class="sar" id="sar"></pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const STAGES = [["typology", "Typology"], ["evidence", "Evidence"], ["verify", "Draft + verify"], ["done", "Gate + decision"]];
+let meta = null, current = null, pollTimer = null, now = new Date();
+
+function seg(el) {
+  el.addEventListener("click", (e) => {
+    if (e.target.tagName !== "BUTTON") return;
+    el.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.target));
+  });
+}
+const segVal = (el) => el.querySelector("button.on").dataset.v;
+const day = (iso) => iso ? iso.slice(0, 10) : "";
+
+async function boot() {
+  meta = await (await fetch("/api/alerts")).json();
+  $("mode").textContent = meta.mode === "offline" ? "Offline replay: scripted models" : "Live: Gemini on Vertex";
+  $("mode").classList.toggle("offline", meta.mode === "offline");
+  $("alert").innerHTML = meta.alerts.map((a) => `<option value="${esc(a.alert_id)}">${esc(a.label)} · ${esc(a.customer || a.account_id)}</option>`).join("");
+  $("snap").innerHTML = ["archived", "live"].map((k, i) =>
+    `<button data-v="${k}" class="${i ? "on" : ""}">${k === "archived" ? "Archived" : "Live"} · ${day(meta.snapshots[k].as_of)}</button>`).join("");
+  seg($("snap")); seg($("basis"));
+  $("run").onclick = () => runOne($("alert").value, segVal($("snap")), segVal($("basis")));
+  $("rev").onclick = runReversal;
+}
+
+async function start(alert_id, snapshot, staleness_basis) {
+  const r = await fetch("/api/cases", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ alert_id, snapshot, staleness_basis }) });
+  return (await r.json()).case_id;
+}
+const getCase = async (id) => (await fetch(`/api/cases/${encodeURIComponent(id)}`)).json();
+
+async function runOne(a, s, b) {
+  $("revcard").classList.add("hide");
+  show(await start(a, s, b));
+}
+
+function show(caseId) {
+  current = caseId;
+  clearTimeout(pollTimer);
+  const tick = async () => {
+    const c = await getCase(caseId);
+    if (caseId !== current) return;
+    render(c);
+    if (c.status !== "done" && c.status !== "error") pollTimer = setTimeout(tick, 500);
+  };
+  tick();
+}
+
+const REV = [
+  ["archived", "retrieved_at", "1 · Archived list, naive clock", "What a typical RAG system does"],
+  ["archived", "source_as_of", "2 · Archived list, publisher date", "Provenance knows the list is old"],
+  ["live", "source_as_of", "3 · Live list", "The designation appears"],
+];
+async function runReversal() {
+  const hero = meta.alerts.find((a) => a.alert_id.includes("hero")) || meta.alerts[0];
+  $("alert").value = hero.alert_id;
+  $("revcard").classList.remove("hide");
+  const ids = await Promise.all(REV.map(([s, b]) => start(hero.alert_id, s, b)));
+  $("tiles").innerHTML = REV.map(([, , k, sub], i) =>
+    `<div class="tile" data-id="${ids[i]}"><div class="k">${esc(k)}</div><div class="d" id="t${i}">running…</div><div class="muted" id="ts${i}">${esc(sub)}</div></div>`).join("");
+  $("tiles").querySelectorAll(".tile").forEach((t) => t.onclick = () => {
+    $("tiles").querySelectorAll(".tile").forEach((x) => x.classList.toggle("sel", x === t));
+    show(t.dataset.id);
+  });
+  $("tiles").firstElementChild.click();
+  const poll = async () => {
+    const cs = await Promise.all(ids.map(getCase));
+    cs.forEach((c, i) => {
+      if (!c.decision) return;
+      const failed = (c.policy_gate?.conditions || []).filter((x) => !x.passed).map((x) => x.name);
+      $(`t${i}`).textContent = c.decision === "auto_close" ? "AUTO-CLOSE" : "ESCALATE";
+      $(`t${i}`).style.color = c.decision === "auto_close" ? "var(--ok)" : "var(--amber)";
+      $(`ts${i}`).textContent = failed.length ? `Gate failed: ${failed.join(", ")}` : "All six gate conditions passed";
+    });
+    if (cs.some((c) => c.status !== "done" && c.status !== "error")) setTimeout(poll, 600);
+  };
+  poll();
+}
+
+function render(c) {
+  ["casecard", "resultgrid", "ledgercard"].forEach((id) => $(id).classList.remove("hide"));
+  $("casetitle").textContent = `Case ${c.case_id || current}` + (c.snapshot ? ` · ${c.snapshot} list · ${c.staleness_basis === "retrieved_at" ? "naive clock" : "publisher-date clock"}` : "");
+  const idx = STAGES.findIndex(([k]) => k === c.stage);
+  $("steps").innerHTML = STAGES.map(([k, l], i) =>
+    `<span class="step ${c.status === "done" || i < idx ? "done" : i === idx ? "now" : ""}">${l}</span>`).join("")
+    + (c.status === "error" ? `<span class="step" style="color:var(--bad)">${esc(c.error)}</span>` : "");
+  const plan = c.evidence_plan;
+  $("plan").innerHTML = plan ? `<span class="muted">Typology <b>${esc(plan.typology)}</b> requires:</span> ` +
+    plan.required.map((e) => `<span class="pill">${esc(e)}</span>`).join(" ") +
+    (c.typology_rationale ? ` <span class="muted">· ${esc(c.typology_rationale)}</span>` : "") : "";
+
+  // Decision + gate
+  if (c.decision) {
+    const conf = c.confidence == null ? "" : `model confidence this is a false positive: ${(+c.confidence).toFixed(2)}`;
+    $("decision").innerHTML = `<div class="decision ${c.decision}"><div class="big">${c.decision === "auto_close" ? "AUTO-CLOSE" : "ESCALATE"}</div>
+      <div class="sub">${esc(conf)}${c.escalation_note ? "<br>" + esc(c.escalation_note) : ""}</div></div>`;
+    $("gate").innerHTML = c.policy_gate.conditions.map((g) =>
+      `<li><span class="${g.passed ? "y" : "n"}">${g.passed ? "✓" : "✗"}</span><span>${esc(g.name.replaceAll("_", " "))}</span><span class="det">${esc(g.detail)}</span></li>`).join("");
+  } else {
+    $("decision").innerHTML = `<div class="muted">Waiting for the gate…</div>`;
+    $("gate").innerHTML = "";
+  }
+
+  // Drafts
+  const ids = new Set((c.claims || []).map((x) => x.claim_id));
+  $("drafts").innerHTML = (c.attempts || []).map((a) => {
+    const body = (a.sentences || []).map((s) =>
+      `<span class="sent ${s.ok ? "" : "bad"}">${citeify(esc(s.text), ids)}</span>`).join(" ");
+    return `<div class="draft ${a.passed ? "acc" : "rej"}"><div class="h">Draft ${a.attempt}: ${a.passed ? "accepted, 100% cited" :
+      `rejected by verifier (${a.failures.length} uncited sentence${a.failures.length > 1 ? "s" : ""})`}</div>${body}</div>`;
+  }).join("") || `<div class="muted">No drafts yet.</div>`;
+  $("probebar").classList.toggle("hide", !(c.status === "done" || c.status === "reopened") || !(c.attempts || []).length);
+  $("probes").innerHTML = (c.probes || []).map((pr) => {
+    const body = pr.sentences.map((s) => `<span class="sent ${s.ok ? "" : "bad"}">${citeify(esc(s.text), ids)}</span>`).join(" ");
+    return `<div class="draft probe-card"><div class="h">Verifier probe: the red sentence was added by you, not the model.
+      Rejected: coverage ${Math.round(pr.coverage * 100)}%; the gate fails on ${esc(pr.gate_failed.join(", "))} and would ${esc(pr.gate_decision.replace("_", "-"))}.</div>${body}</div>`;
+  }).join("");
+
+  // Ledger
+  const staleIds = new Set((c.staleness?.stale_claims || []).map((s) => s.claim_id));
+  const naive = c.staleness_basis === "retrieved_at";
+  $("ledger").innerHTML = (c.claims || []).slice().sort((x, y) => x.produced_by_agent.localeCompare(y.produced_by_agent)).map((x) => {
+    const stale = staleIds.has(x.claim_id);
+    const src = /^https?:/.test(x.source_uri) ? `<a href="${esc(x.source_uri)}" target="_blank" rel="noopener">${esc(new URL(x.source_uri).hostname)}</a>` : esc(x.source_uri);
+    return `<tr id="row-${x.claim_id}" class="${stale ? "stale" : ""}">
+      <td class="mono">${esc(x.claim_id)}</td><td>${esc(x.produced_by_agent)}</td>
+      <td>${esc(x.assertion)} ${x.sanctions_or_pep_hit ? '<span class="pill hit">SANCTIONS HIT</span>' : ""}</td>
+      <td class="mono" style="max-width:220px;word-break:break-all">${src}</td>
+      <td class="ts">${stale ? "<b>" : ""}${esc(day(x.source_as_of))}${stale ? "</b>" : ""}</td>
+      <td class="ts">${esc((x.retrieved_at || "").slice(0, 16).replace("T", " "))}</td>
+      <td>${x.freshness_sla_days}d</td>
+      <td>${stale ? '<span class="pill stale">STALE</span>' : `<span class="pill">${naive ? "fresh by fetch date" : "fresh"}</span>`}</td></tr>`;
+  }).join("");
+
+  // Reopen / reopens links
+  let rn = "";
+  if (c.status === "reopened") rn = `<div class="notice">Reopened by the staleness sweep: ${esc((c.reopen_findings || []).map((f) => f.reason).join(" "))} <a onclick="show('${esc(c.reopened_as)}')">Open the new case →</a></div>`;
+  if (c.reopens) rn = `<div class="notice">This case reopens <a onclick="show('${esc(c.reopens)}')">${esc(c.reopens)}</a> after the staleness sweep.</div>`;
+  $("reopen").innerHTML = rn;
+  // Review bar
+  const done = c.status === "done" || c.status === "reopened";
+  $("review").classList.toggle("hide", !done);
+  $("hist").innerHTML = (c.human_decisions || []).map((h) =>
+    `#${h.n} ${esc(h.reviewer)}: <b>${esc(h.verdict.replace("_", " "))}</b> (${esc(h.action)} of ${esc(h.system_decision)})${h.note ? " · " + esc(h.note) : ""}`).join("<br>");
+  $("sarcard").classList.toggle("hide", !c.sar_draft);
+  $("sar").innerHTML = c.sar_draft ? citeify(esc(c.sar_draft), ids) : "";
+}
+
+function citeify(html, ids) {
+  return html.replace(/\[(clm_[0-9a-f]{10})\]/g, (m, id) =>
+    `<span class="cite" style="${ids.has(id) ? "" : "color:var(--bad)"}" onmouseenter="hl('${id}',1)" onmouseleave="hl('${id}',0)">${id}</span>`);
+}
+function hl(id, on) {
+  const r = $(`row-${id}`);
+  if (r) { r.classList.toggle("hl", !!on); if (on) r.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+}
+$("probe").onclick = async () => {
+  if (!current) return;
+  $("probe").disabled = true;
+  await fetch(`/api/cases/${encodeURIComponent(current)}/probe`, { method: "POST" });
+  $("probe").disabled = false;
+  show(current);
+};
+$("review").addEventListener("click", async (e) => {
+  const v = e.target.dataset?.v;
+  if (!v || !current) return;
+  await fetch(`/api/cases/${encodeURIComponent(current)}/review`, { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ verdict: v, note: $("note").value }) });
+  $("note").value = "";
+  show(current);
+});
+$("sweep").onclick = async () => {
+  $("sweepcard").classList.remove("hide");
+  $("sweepout").textContent = "Sweeping…";
+  const r = await (await fetch("/api/sweep", { method: "POST" })).json();
+  $("sweepout").innerHTML = `Checked ${r.checked} auto-closed case${r.checked === 1 ? "" : "s"}; reopened ${r.reopened.length}.` +
+    r.reopened.map((x) => `<div class="notice">${esc(x.case_id)}: ${esc(x.findings.join(" "))} <a onclick="show('${esc(x.new_case_id)}')">Watch the re-run →</a></div>`).join("");
+};
+boot();
+</script>
+</body>
+</html>
