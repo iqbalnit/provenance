@@ -3,7 +3,7 @@
 PLAN.md is the full design. This document covers how we win: what we build first, the order we build it in, what we cut, and how we present it.
 If the two conflict, **this document governs the schedule and PLAN.md governs the design.**
 
-> Status, Sat Sep 26: **one strategic end-to-end path is complete offline.** An alert runs through the real ADK graph (typologist → parallel evidence agents → cited disposition → verifier loop → policy gate → SAR draft), with the claim ledger, the console and the reversal in one click. It is tested end to end with scripted models. What's left for the MVP is running it on real Gemini + real data and deploying it (see §2).
+> Status, Sun Oct 4: **live on real Gemini.** Firebase Hosting → Cloud Run (ADK agent graph) → Gemini on Vertex with Search grounding, cases in Firestore. The smoke test passes all 7 checks, and the insurance milestone is met on the day. Next: real data and real eval numbers (Oct 5–8), then the video and deck.
 > We start five days behind PLAN.md. The deadline, freeze and submission dates **do not move**. Phase 1 compresses instead.
 
 ---
@@ -42,7 +42,7 @@ These are the five never-cut items, each with a binary acceptance test:
 
 | # | Item | Done when | Status |
 |---|---|---|---|
-| 1 | **Public URL** (Cloud Run agent + Firebase console) | A device that has never logged in pastes an alert ID and gets a cited disposition | Service, console, Dockerfile and `deploy/deploy.sh` built. **Not yet deployed** |
+| 1 | **Public URL** (Cloud Run agent + Firebase console) | A device that has never logged in pastes an alert ID and gets a cited disposition | ✅ Live on Firebase Hosting + Cloud Run, Gemini mode (Oct 4) |
 | 2 | **Citation verifier** in the loop | A forced uncited draft is rejected, retried up to 2×, then escalated | ✅ In the ADK loop; e2e-tested |
 | 3 | **Policy gate** | All six conditions are shown per case in the console | ✅ In the graph and the console |
 | 4 | **Staleness toggle** | Hero alert: naive clock → auto-close; `source_as_of` → escalate; live list → escalate on a sanctions hit | ✅ One-click "Run the reversal"; e2e-tested offline |
