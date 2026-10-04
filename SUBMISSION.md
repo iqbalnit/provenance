@@ -10,7 +10,7 @@ Taken from the Hack2skill submission page (Prototype Submission module).
 | Challenge | Select from the list | BFSI: intelligent risk, fraud, and financial experiences | Pick on the form |
 | Prototype link | "Deployed on GCP or Cloud Run", publicly accessible, **must stay working through evaluation, with no retries** | Cloud Run URL (or its Firebase Hosting front), Gemini mode, cases in Firestore | Needs a billing account or credits (see below) |
 | Deck (PDF, ≤ 5 MB) | **Must use the prescribed template**; other formats "may be subject to disqualification" | Build the deck *in their Google Slides template*, then export to PDF | Not started |
-| GitHub repo | Public access, `https://` URL | https://github.com/iqbalnit/Project_Provenance | **Currently private.** Clean the history first (see below) |
+| GitHub repo | Public access, `https://` URL | https://github.com/iqbalnit/provenance | ✅ Public, clean single-commit history (Oct 4) |
 | Demo video | Rules say "3 to 4 minutes"; the form field says "up to 3 minutes" | **Exactly 3:00 or just under** satisfies both | Script in STRATEGY.md §4 |
 | Brief description | ≤ 1024 characters; must say how we use **Firebase, Firestore, Cloud Run and Gemini** | Draft below (990 characters) | Ready |
 
@@ -47,10 +47,10 @@ The cheapest honest path:
    Budget alerts notify you but do **not** stop spend. The kill switch is
    `gcloud run services delete provenance --region us-central1`.
 
-## Before making the repo public
+## Public repo
 
-The history was squashed into a single clean commit on Oct 4. To make it public:
-GitHub → Settings → General → Danger Zone → Change visibility → Public.
+**Submit https://github.com/iqbalnit/provenance.** It's public and starts from one clean commit.
+`iqbalnit/Project_Provenance` stays private: it's the working repo, and its old history is still reachable by commit ID.
 
 Also before publishing:
 - **Secrets:** none found in history (Google keys, private keys, tokens). Re-check after any local commits.
