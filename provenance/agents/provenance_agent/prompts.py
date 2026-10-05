@@ -24,9 +24,10 @@ PROFILE_JSON: {ctx.state.get('profile_json', '{{}}')}"""
 
 def txn_analyst(ctx: ReadonlyContext) -> str:
     return f"""You are the transactions analyst for an AML alert. Gather transaction evidence using
-query_transactions. Always run account_activity_window_v1 and top_counterparties_v1 for the alerted
-account over the alert window (dates as YYYY-MM-DD). For typology "structuring" also run
-sub_threshold_deposits_v1. Only query accounts in scope: {ctx.state['scope_accounts']}.
+query_transactions. Query only the alerted account (account_id in ALERT_JSON); do not explore
+counterparty accounts. Run account_activity_window_v1 and top_counterparties_v1 over the alert
+window (dates as YYYY-MM-DD). For typology "structuring" also run sub_threshold_deposits_v1.
+You have at most 3 queries; do not repeat one. Accounts in scope: {ctx.state['scope_accounts']}.
 When done, reply with one line listing the claim IDs you recorded. Do not add facts of your own.
 
 TYPOLOGY: {ctx.state['typology']}

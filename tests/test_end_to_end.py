@@ -126,15 +126,26 @@ def test_tools_refuse_accounts_outside_the_alert_scope():
 
 
 def test_tool_call_limit_stops_loops():
-    from provenance.agents.provenance_agent.tools import LIMIT_ERROR, TOOL_CALL_LIMIT, query_transactions
+    from provenance.agents.provenance_agent.tools import LIMIT_ERROR, TOOL_CALL_LIMITS, query_transactions
 
     class Ctx:
         state = {"scope_accounts": ["8830112040"], "case_id": "c"}
 
     ctx = Ctx()
     outs = [asyncio.run(query_transactions("nope", "1", "2026-09-01", "2026-09-30", ctx))
-            for _ in range(TOOL_CALL_LIMIT + 1)]
-    assert "unknown template" in outs[0]["error"] and outs[-1] == LIMIT_ERROR
+            for _ in range(TOOL_CALL_LIMITS["query_transactions"] + 1)]
+    assert TOOL_CALL_LIMITS["query_transactions"] == 3
+    assert all("unknown template" in o["error"] for o in outs[:-1]) and outs[-1] == LIMIT_ERROR
+
+
+def test_txn_analyst_prompt_stays_on_alerted_account():
+    from provenance.agents.provenance_agent.prompts import txn_analyst
+
+    class Ctx:
+        state = {"scope_accounts": ["1"], "typology": "structuring", "alert_json": "{}"}
+
+    p = txn_analyst(Ctx())
+    assert "only the alerted account" in p and "do not explore" in p
 
 
 def test_looping_model_is_bounded_and_trace_shows_it(monkeypatch):

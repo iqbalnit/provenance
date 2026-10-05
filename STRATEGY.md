@@ -131,14 +131,16 @@ Sharper than PLAN.md's version, and already proven in `tests/test_staleness_reve
 
 The line to say: *"It didn't need to know the customer was designated. It only needed to know its evidence was too old to trust."*
 
+**Which data each beat uses.** The reversal runs on the labelled fictional demo bundle, whose transaction pattern is benign by construction, so list freshness alone decides the outcome. On real SAML-D data the hero (a real 2026 OFAC designation) carries a textbook structuring pattern, so Gemini escalates it on confidence under either clock. Show the real hero for what it proves: the archived list has no match, the live list matches SDN #45815, and the verifier rejected Gemini's own first draft. The eval table reports the real-data numbers as they come out, including a small A4-naive vs A4 gap if that is what we measure.
+
 ### Video (3:00)
 
 | Time | Beat |
 |---|---|
 | 0:00–0:20 | The queue: 97 of 100 alerts are noise, at 25 minutes each. We reproduced it ourselves: a standard rule engine on 1.8M transactions fired 44,700 alerts, 97.4% of them false positives |
 | 0:20–0:40 | A1: fluent, zero citations, a hallucinated counterparty circled |
-| 0:40–1:40 | Provenance live on Gemini: typology → evidence plan → parallel agents → ledger filling → Gemini cites every sentence first time → gate (six ticks) → auto-close. Then press **Probe the verifier**: one uncited sentence is added in plain view, the deterministic verifier rejects it and the gate would escalate. Say "we added that sentence, not the model". If a real draft rejection happens while recording, show that instead (it's in the drafts history). 3 seconds of the Cloud Trace waterfall |
-| 1:40–2:15 | The reversal, in three beats |
+| 0:40–1:40 | Provenance live on Gemini on the real hero alert: name-blind typology ("structuring", from behaviour only) → evidence plan → parallel agents → ledger filling → **the verifier rejects Gemini's first draft** (4 uncited sentences, coverage 43%, including "this alert is not a false positive") → draft 2 is fully cited → gate escalates (confidence, sanctions hit on SDN #45815). This happened on a real run; open it from the drafts history. Probe the verifier is the fallback if a recording run gets it right first time. 3 seconds of the Cloud Trace waterfall |
+| 1:40–2:15 | The reversal, in three beats, on the labelled fictional demo bundle |
 | (optional) | 10 s of the sweep reopening the naively closed case, or of the injection guard withholding a hostile web page |
 | 2:15–2:40 | Eval table: **0 TP auto-closes**, X% auto-close, Y analyst-hours/month, calibration curve |
 | 2:40–3:00 | Architecture card with the Google stack, then the tagline |

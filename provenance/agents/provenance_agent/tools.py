@@ -23,6 +23,8 @@ def _summary(c: Claim) -> dict:
 
 
 TOOL_CALL_LIMIT = 6
+# Each call is a Gemini round-trip; three covers the required templates for the alerted account.
+TOOL_CALL_LIMITS = {"query_transactions": 3}
 
 
 def _over_limit(tool_context: ToolContext, name: str) -> bool:
@@ -30,7 +32,7 @@ def _over_limit(tool_context: ToolContext, name: str) -> bool:
     key = f"tool_calls:{name}"
     n = int(tool_context.state.get(key, 0)) + 1
     tool_context.state[key] = n
-    return n > TOOL_CALL_LIMIT
+    return n > TOOL_CALL_LIMITS.get(name, TOOL_CALL_LIMIT)
 
 
 LIMIT_ERROR = {"error": "call limit reached for this tool; stop calling it and summarise what you have"}
