@@ -165,7 +165,15 @@ def link(alerts: list[dict], new: list, old: list) -> dict[str, dict]:
                     return a
         raise RuntimeError("not enough benign alerts to link")
 
-    hero_alert = take("golden", prefer_rule="structuring")
+    # Hero: the golden structuring alert with the fewest transactions, i.e. a rule hit that plausibly is
+    # benign, so the outcome turns on the watchlist rather than on an obviously suspicious pattern.
+    candidates = sorted((a for a in by_split["golden"] if a["rule"] == "structuring"),
+                        key=lambda a: (len(a.get("txn_ids") or []), _h(a["alert_id"], "link")))
+    if candidates:
+        hero_alert = candidates[0]
+        used.add(hero_alert["account_id"])
+    else:
+        hero_alert = take("golden", prefer_rule="structuring")
     plan[hero_alert["account_id"]] = {"entry": new[0], "cohort": "new", "hero": True, "alert_id": hero_alert["alert_id"]}
     for i, e in enumerate(new[1:], start=1):
         a = take("golden" if i < GOLDEN_LINKS["new"] else "eval")

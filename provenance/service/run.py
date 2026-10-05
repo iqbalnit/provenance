@@ -26,7 +26,7 @@ Basis = Literal["source_as_of", "retrieved_at"]
 
 # Every case is bounded: a tool-error loop or a stalled call ends the case instead of hanging it.
 MAX_LLM_CALLS = int(os.environ.get("PROVENANCE_MAX_LLM_CALLS", "40"))
-CASE_TIMEOUT_S = float(os.environ.get("PROVENANCE_CASE_TIMEOUT_S", "240"))
+CASE_TIMEOUT_S = float(os.environ.get("PROVENANCE_CASE_TIMEOUT_S", "360"))
 
 Trace = Callable[[str], None]
 

@@ -112,3 +112,12 @@ def test_institutions_excluded_and_default_hero_is_an_individual(monkeypatch):
     assert hero["ent_num"] == "201"  # the only new individual
     with pytest.raises(SystemExit):
         personas.build(alerts(), ARCHIVED, live, hero="300", now=NOW)
+
+
+def test_hero_gets_the_smallest_structuring_alert():
+    rows = alerts()
+    for a in rows:
+        a["txn_ids"] = [f"t{j}" for j in range(10 + int(a["alert_id"][-3:]))]
+    rows[9]["txn_ids"] = ["t1", "t2", "t3", "t4"]  # alt_009: golden, structuring (9 % 3 == 0), benign
+    _, _, manifest = personas.build(rows, ARCHIVED, LIVE, now=NOW)
+    assert next(x for x in manifest["linked"] if x["hero"])["alert_id"] == "alt_009"

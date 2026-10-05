@@ -4,6 +4,7 @@ Runs with scripted models (PROVENANCE_MODE=offline), so it exercises every
 deterministic guarantee and the ADK wiring without network or credentials.
 """
 import asyncio
+import json
 
 import pytest
 
@@ -174,3 +175,48 @@ def test_case_timeout_marks_error(monkeypatch):
         asyncio.run(run_mod.run_case("alt_demo_grocer", "live", case_id="case_timeout"))
     assert e.value.reason == "timeout"
     assert get_deps().repo.get_case("case_timeout")["status"] == "error"
+
+
+def test_models_never_see_the_customer_name_for_judgement():
+    from provenance.agents.provenance_agent.prompts import name_mask
+
+    m = name_mask("Andrei Gennadyevich TIKHONOV")
+    assert m("Andrei Gennadyevich TIKHONOV does not appear on OFAC SDN.") == "the customer does not appear on OFAC SDN."
+    assert "TIKHONOV" not in m("matches entry #45815 (TIKHONOV, Andrei Gennadyevich, program RUSSIA-EO14024)")
+
+
+def test_typologist_and_disposition_prompts_mask_identity():
+    from provenance.agents.provenance_agent import prompts
+
+    seen = {}
+    orig_t, orig_d = offline.typologist, offline.disposition
+
+    def spy_t(req):
+        seen["typologist"] = offline._sys(req)
+        return orig_t(req)
+
+    def spy_d(req):
+        seen["disposition"] = offline._sys(req)
+        return orig_d(req)
+
+    offline.typologist, offline.disposition = spy_t, spy_d
+    try:
+        run_mod._runners.clear()
+        c = run("alt_demo_hero", "live")
+    finally:
+        offline.typologist, offline.disposition = orig_t, orig_d
+    name = "Placeholder Persona Hero"
+    assert name not in seen["typologist"] and "PROFILE_JSON" in seen["typologist"]
+    assert name not in seen["disposition"] and "the customer" in seen["disposition"]
+    assert any(name in x["assertion"] for x in c["claims"])  # the ledger keeps the real claim
+
+
+def test_retry_config_only_in_gemini_mode(monkeypatch):
+    from provenance.agents.provenance_agent.agent import build_root
+
+    monkeypatch.setenv("PROVENANCE_MODEL_FLASH", "gemini-x-flash")
+    monkeypatch.setenv("PROVENANCE_MODEL_PRO", "gemini-x-pro")
+    g = build_root("gemini").sub_agents[1]
+    assert 429 in g.generate_content_config.http_options.retry_options.http_status_codes
+    off = build_root("offline").sub_agents[1].generate_content_config
+    assert off is None or off.http_options is None

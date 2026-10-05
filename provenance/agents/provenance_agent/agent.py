@@ -23,6 +23,7 @@ from __future__ import annotations
 from google.adk.agents import LlmAgent, LoopAgent, ParallelAgent, SequentialAgent
 from google.adk.apps import App
 from google.adk.tools import google_search
+from google.genai import types
 from pydantic import BaseModel, Field
 
 from provenance.agents.provenance_agent import prompts, steps
@@ -53,16 +54,23 @@ def build_root(mode: str, media_cache: dict | None = None):
         def m(_agent: str, kind: str):
             return config.model(kind)
 
+    # Back off and retry on quota (429) and transient server errors: preview models have low RPM.
+    gen = None if mode == "offline" else types.GenerateContentConfig(http_options=types.HttpOptions(
+        retry_options=types.HttpRetryOptions(attempts=6, initial_delay=2.0, max_delay=60.0, jitter=1.0,
+                                             http_status_codes=[429, 500, 503])))
+
     typologist = LlmAgent(name="typologist", model=m("typologist", "flash"),
                           instruction=prompts.typologist, output_schema=TypologyOutput,
-                          output_key="typology_out", include_contents="none")
+                          output_key="typology_out", include_contents="none", generate_content_config=gen)
     txn = LlmAgent(name="txn_analyst", model=m("txn_analyst", "flash"),
-                   instruction=prompts.txn_analyst, tools=[query_transactions], include_contents="none")
+                   instruction=prompts.txn_analyst, tools=[query_transactions], include_contents="none",
+                   generate_content_config=gen)
     watch = LlmAgent(name="watchlist_analyst", model=m("watchlist_analyst", "flash"),
-                     instruction=prompts.watchlist_analyst, tools=[screen_name], include_contents="none")
+                     instruction=prompts.watchlist_analyst, tools=[screen_name], include_contents="none",
+                     generate_content_config=gen)
     media_search = LlmAgent(name="media_search", model=m("media_search", "flash"),
                             instruction=prompts.media_search, include_contents="none",
-                            tools=[] if mode == "offline" else [google_search])
+                            tools=[] if mode == "offline" else [google_search], generate_content_config=gen)
     evidence = ParallelAgent(name="evidence", sub_agents=[
         txn,
         watch,
@@ -72,7 +80,7 @@ def build_root(mode: str, media_cache: dict | None = None):
     ])
     disposition = LlmAgent(name="disposition", model=m("disposition", "pro"),
                            instruction=prompts.disposition, output_schema=DispositionOutput,
-                           output_key="disposition_out", include_contents="none")
+                           output_key="disposition_out", include_contents="none", generate_content_config=gen)
     return SequentialAgent(name=APP_NAME, sub_agents=[
         steps.CaseInit(name="case_init"),
         typologist,

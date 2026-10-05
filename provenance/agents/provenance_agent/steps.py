@@ -70,6 +70,8 @@ class CaseInit(BaseAgent):
             "alert": alert, "customer": customer, "scope_accounts": sorted(scope),
             "alert_json": json.dumps(alert),
             "customer_json": json.dumps(customer),
+            # What the typologist sees: behaviour and declared profile, never the name.
+            "profile_json": json.dumps({k: v for k, v in customer.items() if k != "name"}),
         })
 
 
