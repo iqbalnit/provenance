@@ -22,7 +22,7 @@ import uuid
 from provenance.eval.baselines import run_a0
 from provenance.eval.results import EvalRow, summarize, upload, write_jsonl
 from provenance.runtime import get_deps
-from provenance.service.run import run_case
+from provenance.service.run import CaseError, run_case
 
 ARMS = {
     "A3": ("live", "source_as_of"),
@@ -38,15 +38,26 @@ def select_alerts(alerts, split: str, limit: int | None = None) -> list[dict]:
     return chosen[:limit] if limit else chosen
 
 
-async def run_arm(arm: str, alerts: list[dict], run_id: str) -> list[EvalRow]:
+async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None) -> list[EvalRow]:
     snapshot, basis = ARMS[arm]
     d = get_deps()
     rows = []
-    for a in alerts:
+    for i, a in enumerate(alerts, 1):
         t0 = time.monotonic()
-        case = d.repo.get_case(await run_case(a["alert_id"], snapshot, basis))
+        try:
+            case = d.repo.get_case(await run_case(a["alert_id"], snapshot, basis, trace=trace))
+        except CaseError as e:
+            # A case that doesn't finish is recorded, not dropped: decision "error" never counts as auto-close.
+            print(f"  [{i}/{len(alerts)}] {a['alert_id']} ERROR {e.reason} ({time.monotonic() - t0:.0f}s)", flush=True)
+            rows.append(EvalRow(run_id=run_id, arm=arm, alert_id=a["alert_id"], split=a.get("split", ""),
+                                decision="error", confidence=None, truly_suspicious=bool(a["truly_suspicious"]),
+                                citation_coverage=0.0, hallucinated_entity_rate=None, narrative=e.reason,
+                                model_id=d.mode, latency_ms=int((time.monotonic() - t0) * 1000)))
+            continue
         cfp = case.get("confidence")
         auto = case["decision"] == "auto_close"
+        print(f"  [{i}/{len(alerts)}] {a['alert_id']} {case['decision']}"
+              f"{' (suspicious)' if a['truly_suspicious'] else ''} ({time.monotonic() - t0:.0f}s)", flush=True)
         rows.append(EvalRow(
             run_id=run_id, arm=arm, alert_id=a["alert_id"], split=a.get("split", ""),
             decision=case["decision"],
@@ -67,6 +78,7 @@ def main() -> None:
     ap.add_argument("--all", action="store_true", help="A0 + every system arm (A1 needs --mode gemini; run it via baselines)")
     ap.add_argument("--split", default="golden", choices=["golden", "eval", "demo", "all"])
     ap.add_argument("--limit", type=int, help="run only the first N alerts (by alert_id) to bound model spend")
+    ap.add_argument("--trace", action="store_true", help="print every agent step for each case")
     ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     if not a.arm and not a.all:
@@ -81,7 +93,7 @@ def main() -> None:
             rows = run_a0([{**x, "split": x.get("split", "")} for x in alerts], run_id)
             rows = [r.model_copy(update={"model_id": d.mode}) for r in rows]
         else:
-            rows = asyncio.run(run_arm(arm, alerts, run_id))
+            rows = asyncio.run(run_arm(arm, alerts, run_id, trace=(lambda x: print('    ' + x, flush=True)) if a.trace else None))
         print(f"{arm}: wrote {write_jsonl(rows)}")
         print(json.dumps(summarize(rows), indent=2))
         if a.upload:

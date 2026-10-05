@@ -5,6 +5,8 @@ plan, KYC reading, the verifier + policy gate, and finalisation.
 """
 from __future__ import annotations
 
+import asyncio
+
 import json
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -48,14 +50,15 @@ class CaseInit(BaseAgent):
         d = get_deps()
         st = ctx.session.state
         alert = {k: v for k, v in d.alerts[st["alert_id"]].items() if k not in HIDDEN_ALERT_FIELDS}
+        alert["account_id"] = str(alert["account_id"])
         customer = d.customers.get(alert["account_id"], {"name": f"account {alert['account_id']}"})
         # Tools may only query the alerted account and its counterparties in the alert window.
-        alert["account_id"] = str(alert["account_id"])
         scope = {alert["account_id"]}
-        for r in d.txns.run("account_activity_window_v1", {
+        window = await asyncio.to_thread(d.txns.run, "account_activity_window_v1", {  # BigQuery is blocking
             "account_id": alert["account_id"],
             "start_date": alert["window_start"][:10], "end_date": alert["window_end"][:10],
-        }).rows:
+        })
+        for r in window.rows:
             scope.add(str(r["counterparty_account"]))
         d.repo.create_case(
             Case(case_id=st["case_id"], alert_id=alert["alert_id"]),

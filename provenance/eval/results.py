@@ -57,6 +57,7 @@ def summarize(rows: Sequence[EvalRow]) -> dict:
     lat = sorted(r.latency_ms for r in rows if r.latency_ms is not None)
     return {
         "n": len(rows),
+        "errors": sum(r.decision == "error" for r in rows),
         "positives": sum(r.truly_suspicious for r in rows),
         "fn_rate_on_auto_close": false_negative_rate_on_auto_close(outcomes),
         "tp_auto_closes": sum(r.auto_closed and r.truly_suspicious for r in rows),

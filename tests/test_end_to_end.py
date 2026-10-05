@@ -120,5 +120,57 @@ def test_tools_refuse_accounts_outside_the_alert_scope():
     class Ctx:
         state = {"scope_accounts": ["8830112040"], "case_id": "c"}
 
-    out = query_transactions("account_activity_window_v1", "9999999999", "2026-09-01", "2026-09-30", Ctx())
+    out = asyncio.run(query_transactions("account_activity_window_v1", "9999999999", "2026-09-01", "2026-09-30", Ctx()))
     assert "outside this alert's scope" in out["error"]
+
+
+def test_tool_call_limit_stops_loops():
+    from provenance.agents.provenance_agent.tools import LIMIT_ERROR, TOOL_CALL_LIMIT, query_transactions
+
+    class Ctx:
+        state = {"scope_accounts": ["8830112040"], "case_id": "c"}
+
+    ctx = Ctx()
+    outs = [asyncio.run(query_transactions("nope", "1", "2026-09-01", "2026-09-30", ctx))
+            for _ in range(TOOL_CALL_LIMIT + 1)]
+    assert "unknown template" in outs[0]["error"] and outs[-1] == LIMIT_ERROR
+
+
+def test_looping_model_is_bounded_and_trace_shows_it(monkeypatch):
+    """A model that never stops calling a failing tool ends with the call limit, and the case still finishes."""
+    calls = []
+
+    def looping(req):
+        calls.append(1)
+        return offline._call("query_transactions", {"template_id": "nope", "account_id": "x",
+                                                    "start_date": "2026-09-01", "end_date": "2026-09-02"})
+
+    monkeypatch.setattr(offline, "txn_analyst", looping)
+    run_mod._runners.clear()
+    lines = []
+    # A model that ignores even the call-limit message hits the LLM-call cap: the case ends as an
+    # error with the reason recorded, instead of hanging.
+    with pytest.raises(run_mod.CaseError) as e:
+        asyncio.run(run_mod.run_case("alt_demo_hero", "live", case_id="case_loop", trace=lines.append))
+    assert "LlmCallsLimitExceeded" in e.value.reason
+    assert get_deps().repo.get_case("case_loop")["status"] == "error"
+    assert any("CALL query_transactions" in l for l in lines) and any("call limit" in l for l in lines)
+    assert len(calls) <= run_mod.MAX_LLM_CALLS
+
+
+def test_case_timeout_marks_error(monkeypatch):
+    import time as _time
+
+    original = offline.typologist
+
+    def slow(req):
+        _time.sleep(0.3)
+        return original(req)
+
+    monkeypatch.setattr(offline, "typologist", slow)
+    monkeypatch.setattr(run_mod, "CASE_TIMEOUT_S", 0.1)
+    run_mod._runners.clear()
+    with pytest.raises(run_mod.CaseError) as e:
+        asyncio.run(run_mod.run_case("alt_demo_grocer", "live", case_id="case_timeout"))
+    assert e.value.reason == "timeout"
+    assert get_deps().repo.get_case("case_timeout")["status"] == "error"

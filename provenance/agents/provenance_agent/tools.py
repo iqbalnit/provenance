@@ -6,6 +6,8 @@ author a claim's content or its source.
 """
 from __future__ import annotations
 
+import asyncio
+
 from google.adk.tools import ToolContext
 
 from provenance.core.models import Claim, EvidenceType, SourceType
@@ -20,7 +22,21 @@ def _summary(c: Claim) -> dict:
     return {"claim_id": c.claim_id, "assertion": c.assertion}
 
 
-def query_transactions(
+TOOL_CALL_LIMIT = 6
+
+
+def _over_limit(tool_context: ToolContext, name: str) -> bool:
+    """Per-case call counter: stops a model from looping on a tool (e.g. retrying after errors)."""
+    key = f"tool_calls:{name}"
+    n = int(tool_context.state.get(key, 0)) + 1
+    tool_context.state[key] = n
+    return n > TOOL_CALL_LIMIT
+
+
+LIMIT_ERROR = {"error": "call limit reached for this tool; stop calling it and summarise what you have"}
+
+
+async def query_transactions(
     template_id: str,
     account_id: str,
     start_date: str,
@@ -40,13 +56,16 @@ def query_transactions(
       threshold: reporting threshold for sub_threshold_deposits_v1.
     """
     st = tool_context.state
+    if _over_limit(tool_context, "query_transactions"):
+        return LIMIT_ERROR
+    account_id = str(account_id).strip()
     if template_id not in TEMPLATES:
         return {"error": f"unknown template {template_id}; choose from {sorted(TEMPLATES)}"}
     if account_id not in st["scope_accounts"]:
         return {"error": f"account {account_id} is outside this alert's scope {st['scope_accounts']}"}
     d = get_deps()
     params = txn_source.build_params(template_id, account_id, start_date[:10], end_date[:10], floor, threshold)
-    res = d.txns.run(template_id, params)
+    res = await asyncio.to_thread(d.txns.run, template_id, params)  # BigQuery is blocking
     ledger = d.repo.ledger(st["case_id"])
     claims = [
         Claim(
@@ -74,6 +93,8 @@ def screen_name(name: str, tool_context: ToolContext) -> dict:
       name: full name exactly as it appears in the customer profile or transaction data.
     """
     st = tool_context.state
+    if _over_limit(tool_context, "screen_name"):
+        return LIMIT_ERROR
     d = get_deps()
     snapshot = d.watchlists[st["snapshot"]]
     claim = check_name(name, snapshot, retrieved_at=d.now())
