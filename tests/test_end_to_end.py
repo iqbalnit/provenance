@@ -220,3 +220,18 @@ def test_retry_config_only_in_gemini_mode(monkeypatch):
     assert 429 in g.generate_content_config.http_options.retry_options.http_status_codes
     off = build_root("offline").sub_agents[1].generate_content_config
     assert off is None or off.http_options is None
+
+
+def test_trace_heartbeat_while_a_model_call_is_slow(monkeypatch):
+    """A slow (e.g. quota back-off) Gemini call emits no events; the heartbeat must say so."""
+    async def slow_generate(self, llm_request, stream=False):
+        await asyncio.sleep(0.3)  # awaits like a real HTTP call, so other tasks run
+        yield self.script(llm_request)
+
+    monkeypatch.setattr(offline.ScriptedLlm, "generate_content_async", slow_generate)
+    monkeypatch.setattr(run_mod, "HEARTBEAT_S", 0.1)
+    run_mod._runners.clear()
+    lines = []
+    asyncio.run(run_mod.run_case("alt_demo_grocer", "live", trace=lines.append))
+    assert any("still running" in l for l in lines)
+    assert any("finalize" in l for l in lines)

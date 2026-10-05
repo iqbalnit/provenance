@@ -27,6 +27,7 @@ Basis = Literal["source_as_of", "retrieved_at"]
 # Every case is bounded: a tool-error loop or a stalled call ends the case instead of hanging it.
 MAX_LLM_CALLS = int(os.environ.get("PROVENANCE_MAX_LLM_CALLS", "40"))
 CASE_TIMEOUT_S = float(os.environ.get("PROVENANCE_CASE_TIMEOUT_S", "360"))
+HEARTBEAT_S = float(os.environ.get("PROVENANCE_HEARTBEAT_S", "15"))
 
 Trace = Callable[[str], None]
 
@@ -76,14 +77,26 @@ async def run_case(alert_id: str, snapshot: Snapshot = "live", basis: Basis = "s
     )
     msg = types.Content(role="user", parts=[types.Part(text=f"Triage alert {alert_id}.")])
     t0 = time.monotonic()
+    last = {"agent": "case_init", "at": t0}
 
     async def drive() -> None:
         async for ev in _runner().run_async(user_id="analyst", session_id=session.id, new_message=msg,
                                             run_config=RunConfig(max_llm_calls=MAX_LLM_CALLS)):
+            last.update(agent=ev.author, at=time.monotonic())
             if trace:
                 for line in describe(ev, t0):
                     trace(line)
 
+    async def heartbeat() -> None:
+        # Gemini retries (e.g. 429 back-off) happen inside one HTTP call and emit no events,
+        # so without this a waiting run looks exactly like a hung one.
+        while True:
+            await asyncio.sleep(HEARTBEAT_S)
+            now = time.monotonic()
+            trace(f"{now - t0:6.1f}s … still running; {now - last['at']:.0f}s since the last event from "
+                  f"{last['agent']} (a Gemini call may be backing off on quota)")
+
+    beat = asyncio.ensure_future(heartbeat()) if trace else None
     try:
         await asyncio.wait_for(drive(), timeout=CASE_TIMEOUT_S)
     except TimeoutError as e:
@@ -93,6 +106,9 @@ async def run_case(alert_id: str, snapshot: Snapshot = "live", basis: Basis = "s
     except Exception as e:
         d.repo.update(case_id, {"status": "error", "stage": "error", "error": f"{type(e).__name__}: {e}"})
         raise CaseError(case_id, f"{type(e).__name__}: {e}") from e
+    finally:
+        if beat:
+            beat.cancel()
     return case_id
 
 
