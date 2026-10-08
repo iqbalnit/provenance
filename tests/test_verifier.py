@@ -46,3 +46,30 @@ def test_citation_after_period_stays_with_its_sentence():
         "One fact. [clm_0123456789]",
         "Two fact [clm_abcdefabcd].",
     ]
+
+
+def test_grouped_citation_counts_every_id():
+    # The exact shape Gemini produced on the real hero run, which the old one-ID-per-bracket regex rejected.
+    led, a, b = _ledger()
+    text = f"Account 9476797916 is held by an Accountant whose declared source of funds is Savings [{a}, {b}]. It received 13 credits [{b}; {a}]."
+    r = verify_narrative(text, led)
+    assert r.passed and r.coverage == 1.0
+    assert r.citation_map == {0: [a, b], 1: [b, a]}
+    assert len(r.sentences) == 2
+
+
+def test_unknown_id_inside_a_group_is_unresolved():
+    led, a, _ = _ledger()
+    r = verify_narrative(f"The account received 14 deposits [{a}, clm_deadbeef00].", led)
+    assert not r.passed and r.failures[0].unresolved_ids == ["clm_deadbeef00"]
+
+
+def test_bracket_with_free_text_is_not_a_citation():
+    led, a, _ = _ledger()
+    r = verify_narrative(f"The account received 14 deposits [{a}, see above].", led)
+    assert not r.passed and "no citation" in r.feedback()
+
+
+def test_trailing_group_stays_with_its_sentence():
+    a, b = "clm_" + "a" * 10, "clm_" + "b" * 10
+    assert split_sentences(f"First fact. [{a}, {b}] Second fact [{a}].") == [f"First fact. [{a}, {b}]", f"Second fact [{a}]."]

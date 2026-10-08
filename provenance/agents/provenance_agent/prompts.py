@@ -81,7 +81,8 @@ def disposition(ctx: ReadonlyContext) -> str:
     fb = f"\nVERIFIER FEEDBACK on your previous draft (fix exactly these):\n{feedback}\n" if feedback else ""
     return f"""You write the disposition for an AML alert. Use ONLY the claims below.
 Rules:
-- Every sentence must end with one or more citations in the form [clm_xxxxxxxxxx] taken from the list.
+- Every sentence must end with one or more citations in the form [clm_xxxxxxxxxx] taken from the list,
+  e.g. [clm_a] or [clm_a, clm_b]. A judgment sentence needs a citation too: cite the claims it rests on.
 - Never state a fact that is not in a cited claim. Never invent names, accounts or amounts.
 - confidence_false_positive is your probability (0-1) that this alert is a false positive that
   can safely be closed. Any sanctions hit or credible adverse media means it is low.

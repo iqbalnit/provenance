@@ -2,6 +2,7 @@
 
 Not an LLM judging an LLM: a parser that fails the draft. Every sentence of a
 disposition narrative must carry at least one citation token `[clm_xxxxxxxxxx]`
+(several IDs may share a bracket: `[clm_a, clm_b]`)
 that resolves in the ledger. If any sentence fails, the draft is rejected and
 the disposition agent's LoopAgent retries (max 2) before escalating.
 
@@ -16,9 +17,18 @@ from pydantic import BaseModel
 
 from provenance.core.ledger import LedgerStore
 
-CITATION_RE = re.compile(r"\[(clm_[0-9a-f]{10})\]")
+_ID = r"clm_[0-9a-f]{10}"
+# One bracket holds one or more claim IDs: [clm_a] or [clm_a, clm_b]. Anything else in it is not a citation.
+_GROUP = rf"\[{_ID}(?:\s*[,;]\s*{_ID})*\]"
+CITATION_RE = re.compile(_GROUP)
+_ID_RE = re.compile(_ID)
 # Split after sentence-ending punctuation (optionally followed by citations/quotes).
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])(?:\s*\[clm_[0-9a-f]{10}\])*\s+(?=[A-Z0-9\"'(])")
+_SENTENCE_SPLIT_RE = re.compile(rf"(?<=[.!?])(?:\s*{_GROUP})*\s+(?=[A-Z0-9\"'(])")
+
+
+def cited_ids(text: str) -> list[str]:
+    """Claim IDs cited in text, in order, without duplicates."""
+    return list(dict.fromkeys(i for g in CITATION_RE.findall(text) for i in _ID_RE.findall(g)))
 
 
 class SentenceCheck(BaseModel):
@@ -74,7 +84,7 @@ def verify_narrative(narrative: str, ledger: LedgerStore) -> VerificationResult:
     sentences = split_sentences(narrative)
     checks: list[SentenceCheck] = []
     for i, s in enumerate(sentences):
-        ids = list(dict.fromkeys(CITATION_RE.findall(s)))
+        ids = cited_ids(s)
         unresolved = [cid for cid in ids if ledger.get(cid) is None]
         checks.append(SentenceCheck(index=i, text=s, claim_ids=ids, unresolved_ids=unresolved))
 

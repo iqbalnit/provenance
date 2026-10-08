@@ -332,8 +332,9 @@ function render(c) {
 }
 
 function citeify(html, ids) {
-  return html.replace(/\[(clm_[0-9a-f]{10})\]/g, (m, id) =>
-    `<span class="cite" style="${ids.has(id) ? "" : "color:var(--bad)"}" onmouseenter="hl('${id}',1)" onmouseleave="hl('${id}',0)">${id}</span>`);
+  return html.replace(/\[clm_[0-9a-f]{10}(?:\s*[,;]\s*clm_[0-9a-f]{10})*\]/g, (m) =>
+    m.match(/clm_[0-9a-f]{10}/g).map(id =>
+      `<span class="cite" style="${ids.has(id) ? "" : "color:var(--bad)"}" onmouseenter="hl('${id}',1)" onmouseleave="hl('${id}',0)">${id}</span>`).join(""));
 }
 function hl(id, on) {
   const r = $(`row-${id}`);

@@ -19,7 +19,7 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("role_marker", re.compile(r"(^|\s|\[|<)(system|assistant|developer)\s*(:|\]|>)|<\|?(im_start|system)\|?>", re.I)),
     ("persona_switch", re.compile(r"\b(you are now|act as|pretend to be|from now on you)\b", re.I)),
     ("tool_syntax", re.compile(r"\b(function_call|tool_call|tool_code)\b|\bcall\s+(the\s+)?(tool|function)\b|```", re.I)),
-    ("citation_spoof", re.compile(r"\[clm_[0-9a-f]{6,}\]", re.I)),
+    ("citation_spoof", re.compile(r"\[\s*clm_[0-9a-f]{6,}", re.I)),
     ("disposition_directive", re.compile(
         r"\b(auto[- ]?close|close|dismiss|approve|clear|whitelist)\b[^.]{0,30}\b(this|the)\s+(alert|case|customer|account|transaction)", re.I)),
 ]
