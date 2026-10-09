@@ -1,0 +1,78 @@
+{
+  "_comment": "Measured results the deck quotes. Update after each eval run and rebuild; null renders as 'running'.",
+  "rule_engine": {
+    "transactions": 1822214,
+    "alerts": 44700,
+    "fp_rate": 0.974
+  },
+  "golden": {
+    "n": 40,
+    "suspicious": 13
+  },
+  "arms": [
+    {
+      "arm": "A0",
+      "what": "Rules only",
+      "n": 40,
+      "suspicious_auto_closed": "0",
+      "auto_close_rate": 0.0,
+      "citation_coverage": null,
+      "hallucinated_entities": null,
+      "ece": null
+    },
+    {
+      "arm": "A1",
+      "what": "Gemini, no tools",
+      "n": 40,
+      "suspicious_auto_closed": "1 of 13",
+      "auto_close_rate": 0.025,
+      "citation_coverage": 0.0,
+      "hallucinated_entities": 0.158,
+      "ece": 0.6
+    },
+    {
+      "arm": "A3",
+      "what": "Provenance, live list",
+      "n": 10,
+      "suspicious_auto_closed": "0 of 4",
+      "auto_close_rate": 0.0,
+      "citation_coverage": 1.0,
+      "hallucinated_entities": null,
+      "ece": 0.56
+    },
+    {
+      "arm": "A4-naive",
+      "what": "Archived list, fetch-date clock",
+      "n": null,
+      "suspicious_auto_closed": null,
+      "auto_close_rate": null,
+      "citation_coverage": null,
+      "hallucinated_entities": null,
+      "ece": null
+    },
+    {
+      "arm": "A4",
+      "what": "Archived list, publisher clock",
+      "n": null,
+      "suspicious_auto_closed": null,
+      "auto_close_rate": null,
+      "citation_coverage": null,
+      "hallucinated_entities": null,
+      "ece": null
+    }
+  ],
+  "runtime": {
+    "llm_calls_per_case": "about 11",
+    "latency_p50_s": 61,
+    "latency_p95_s": 190
+  },
+  "hero": {
+    "sdn": "#45815",
+    "archived_as_of": "2024-03-29",
+    "live_as_of": "2026-10-04",
+    "draft1_uncited": 2,
+    "draft2_coverage": 1.0
+  },
+  "analyst_minutes_per_alert": 25,
+  "gemini_cost_per_case_usd": null
+}

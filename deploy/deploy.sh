@@ -7,6 +7,7 @@
 #                                     #   otherwise the AI Studio GOOGLE_API_KEY, stored in Secret Manager
 #   MODE=gemini DATA=gcp ./deploy/deploy.sh   # BigQuery / GCS / Firestore
 #   SWEEP=1 ...                               # also schedule the nightly staleness sweep
+#   EVAL=local ...                            # gemini mode reads /eval from BigQuery by default; this turns it off
 #
 # Needs: gcloud auth, GOOGLE_CLOUD_PROJECT, and for gemini PROVENANCE_MODEL_FLASH / _PRO (pinned IDs).
 # REGION is where Cloud Run runs; MODEL_LOCATION is where Vertex serves the pinned models. Full guide: docs/RUNNING_ON_GEMINI.md
@@ -59,6 +60,11 @@ if [[ "$MODE" == "gemini" || "$DATA" == "gcp" ]]; then
     gcloud firestore databases create --database="(default)" --location="${FIRESTORE_LOCATION:-nam5}" \
       --type=firestore-native --project "$PROJECT"
   fi
+fi
+# The eval page reads BigQuery eval_results in gemini mode even when the cases come from the demo bundle.
+EVAL="${EVAL:-$([[ "$MODE" == "gemini" ]] && echo bigquery || echo local)}"
+if [[ "$EVAL" == "bigquery" && "$DATA" != "gcp" ]]; then
+  ENV="${ENV},PROVENANCE_EVAL=bigquery,PROVENANCE_BQ_DATASET=${PROVENANCE_BQ_DATASET:-provenance}"
 fi
 if [[ "$DATA" == "gcp" ]]; then
   ENV="${ENV},PROVENANCE_BQ_DATASET=${PROVENANCE_BQ_DATASET:-provenance},PROVENANCE_GCS_BUCKET=${PROVENANCE_GCS_BUCKET:?},PROVENANCE_OFAC_ARCHIVED_URI=${PROVENANCE_OFAC_ARCHIVED_URI:?},PROVENANCE_OFAC_LIVE_URI=${PROVENANCE_OFAC_LIVE_URI:?}"

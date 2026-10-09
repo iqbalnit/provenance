@@ -181,11 +181,16 @@ async def trigger_sweep(envelope: dict) -> dict:
 
 @app.get("/api/eval")
 def eval_report() -> dict:
-    if os.environ.get("PROVENANCE_DATA") == "gcp":  # pragma: no cover - needs GCP
-        from provenance import config  # noqa: PLC0415
+    # The deployed demo serves the bundle but still shows the real eval: PROVENANCE_EVAL=bigquery.
+    runs = None
+    if os.environ.get("PROVENANCE_DATA") == "gcp" or os.environ.get("PROVENANCE_EVAL") == "bigquery":
+        try:  # pragma: no cover - needs GCP
+            from provenance import config  # noqa: PLC0415
 
-        runs = report.latest_bigquery_runs(f"{config.bq_dataset()}.eval_results")
-    else:
+            runs = report.latest_bigquery_runs(f"{config.bq_dataset()}.eval_results")
+        except Exception:  # noqa: BLE001 - an empty eval page beats a 500
+            log.exception("eval_results unavailable; falling back to local runs")
+    if runs is None:
         runs = report.latest_local_runs()
     return _jsonable({**report.build_report(runs), "generated_at": datetime.now(UTC)})
 
