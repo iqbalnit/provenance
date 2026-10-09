@@ -121,3 +121,22 @@ def test_hero_gets_the_smallest_structuring_alert():
     rows[9]["txn_ids"] = ["t1", "t2", "t3", "t4"]  # alt_009: golden, structuring (9 % 3 == 0), benign
     _, _, manifest = personas.build(rows, ARCHIVED, LIVE, now=NOW)
     assert next(x for x in manifest["linked"] if x["hero"])["alert_id"] == "alt_009"
+
+
+def test_declared_volume_comes_from_pre_alert_history(tmp_path):
+    csv_path = tmp_path / "s.csv"
+    head = "Time,Date,Sender_account,Receiver_account,Amount,Payment_currency,Received_currency," \
+           "Sender_bank_location,Receiver_bank_location,Payment_type,Is_laundering,Laundering_type\n"
+    rows = [f"10:00:00,2022-{m:02d}-05,999,acct0,9000,UK pounds,UK pounds,UK,UK,Cash Deposit,0,Normal\n"
+            for m in (1, 2, 3)]
+    rows.append("10:00:00,2022-04-02,999,acct0,500000,UK pounds,UK pounds,UK,UK,Cash Deposit,0,Normal\n")  # in window
+    csv_path.write_text(head + "".join(rows))
+    al = [{"account_id": "acct0", "window_start": "2022-04-01T00:00:00"},
+          {"account_id": "acct1", "window_start": "2022-04-01T00:00:00"}]
+    base = personas.baseline_monthly(csv_path, al)
+    assert set(base) == {"acct0"}  # acct1 has no history
+    assert 5_000 < base["acct0"] < 15_000  # the in-window 500k never sets the baseline
+    assert personas.volume_band(base["acct0"]) == "5,000-15,000"
+    assert personas.volume_band(300_000) == "250,000-1,000,000"
+    prof = personas.profile("acct0", "X", "person", NOW, base["acct0"])
+    assert prof["expected_monthly_volume"] == "5,000-15,000"

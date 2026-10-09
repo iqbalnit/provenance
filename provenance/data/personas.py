@@ -30,6 +30,7 @@ artifacts/alerts.jsonl (rewritten; -> BigQuery `alerts`), artifacts/personas.jso
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 from collections import defaultdict
@@ -57,7 +58,9 @@ OCCUPATIONS = {"person": ["Software engineer", "Nurse", "Self-employed electrici
                           "Accountant", "Taxi driver", "Pharmacist", "Restaurant owner", "Consultant"],
                "business": ["Retail (cash-intensive)", "Wholesale trading", "Logistics", "Hospitality",
                             "Construction", "Import/export", "Professional services"]}
-VOLUMES = ["2,000-5,000", "5,000-15,000", "15,000-40,000", "40,000-100,000"]
+VOLUMES = ["2,000-5,000", "5,000-15,000", "15,000-40,000", "40,000-100,000", "100,000-250,000", "250,000-1,000,000"]
+_VOLUME_TOP = [5_000, 15_000, 40_000, 100_000, 250_000, 1_000_000]
+MIN_HISTORY_DAYS = 28
 FUNDS = {"person": ["Salary", "Self-employment income", "Pension", "Savings"],
          "business": ["Trading revenue", "Contract income", "Retail sales"]}
 
@@ -97,12 +100,53 @@ def synthetic_name(account: str, index: SdnIndex) -> tuple[str, str]:
     raise RuntimeError(f"could not find a non-matching synthetic name for {account}")
 
 
-def profile(account: str, name: str, kind: str, now: datetime) -> dict:
+def baseline_monthly(txns_csv: Path, alerts: list[dict]) -> dict[str, float]:
+    """Each alerted account's typical monthly turnover *before* its first alert window.
+
+    A bank's KYC profile reflects how the customer normally banks. Picking the declared volume at
+    random made most benign accounts look out of profile, which is noise we would be injecting,
+    not a property of the data. Turnover is max(credits, debits) per month, over history that ends
+    where the earliest alert window starts, so the alert's own transactions never set the baseline.
+    """
+    first_window = {}
+    for a in alerts:
+        start = datetime.fromisoformat(a["window_start"]).replace(tzinfo=None)
+        acct = str(a["account_id"])
+        first_window[acct] = min(start, first_window.get(acct, start))
+    totals: dict[str, list[float]] = defaultdict(lambda: [0.0, 0.0])
+    first_seen: dict[str, datetime] = {}
+    with open(txns_csv, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            ts = datetime.fromisoformat(f"{r['Date']}T{r['Time']}")
+            for acct, side in ((str(r["Receiver_account"]), 0), (str(r["Sender_account"]), 1)):
+                cut = first_window.get(acct)
+                if cut is None or ts >= cut:
+                    continue
+                totals[acct][side] += float(r["Amount"])
+                first_seen[acct] = min(ts, first_seen.get(acct, ts))
+    out = {}
+    for acct, (credit, debit) in totals.items():
+        days = (first_window[acct] - first_seen[acct]).days
+        if days >= MIN_HISTORY_DAYS:
+            out[acct] = max(credit, debit) / (days / 30.4)
+    return out
+
+
+def volume_band(monthly: float) -> str:
+    """Smallest declared band that covers the baseline with 20% headroom."""
+    for band, top in zip(VOLUMES, _VOLUME_TOP, strict=True):
+        if monthly * 1.2 <= top:
+            return band
+    return VOLUMES[-1]
+
+
+def profile(account: str, name: str, kind: str, now: datetime, baseline: float | None = None) -> dict:
     reviewed = now - timedelta(days=30 + _h(account, "rev") % 300)
     return {
         "name": name,
         "occupation": _pick(OCCUPATIONS[kind], account, "occ"),
-        "expected_monthly_volume": _pick(VOLUMES, account, "vol"),
+        # From the account's own pre-alert history when we have it; no history -> deterministic pick.
+        "expected_monthly_volume": volume_band(baseline) if baseline is not None else _pick(VOLUMES[:4], account, "vol"),
         "source_of_funds": _pick(FUNDS[kind], account, "funds"),
         "country": "UK",
         "kyc_reviewed_at": reviewed.replace(microsecond=0).isoformat(),
@@ -185,8 +229,10 @@ def link(alerts: list[dict], new: list, old: list) -> dict[str, dict]:
 
 
 def build(alerts: list[dict], archived: WatchlistSnapshot, live: WatchlistSnapshot,
-          hero: str | None = None, now: datetime | None = None) -> tuple[list[dict], dict, dict]:
+          hero: str | None = None, now: datetime | None = None,
+          baselines: dict[str, float] | None = None) -> tuple[list[dict], dict, dict]:
     now = now or datetime.now(UTC)
+    baselines = baselines or {}
     # Idempotent re-runs: undo a previous linkage first. Only SAML-D-benign alerts are ever linked,
     # so the original label of a sanctions_exposure alert is False.
     alerts = [
@@ -202,10 +248,10 @@ def build(alerts: list[dict], archived: WatchlistSnapshot, live: WatchlistSnapsh
         if acct in plan:
             e = plan[acct]["entry"]
             kind = "person" if e.sdn_type == "individual" else "business"
-            customers[acct] = profile(acct, display_name(e), kind, now)
+            customers[acct] = profile(acct, display_name(e), kind, now, baselines.get(str(acct)))
         else:
             kind, name = synthetic_name(acct, index)
-            customers[acct] = profile(acct, name, kind, now)
+            customers[acct] = profile(acct, name, kind, now, baselines.get(str(acct)))
     out_alerts = []
     for a in alerts:
         a = {k: v for k, v in a.items() if k not in {"label_source", "sdn_ent_num", "designated_after_archive"}}
@@ -236,6 +282,8 @@ def main() -> None:
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--alerts", type=Path, default=ARTIFACTS / "alerts.jsonl")
+    ap.add_argument("--txns", type=Path, default=Path("data/raw/saml_d_sample.csv"),
+                    help="SAML-D sample; sets each customer's declared volume from pre-alert history")
     ap.add_argument("--hero", help="ent_num of the hero (must be a new designation); default: deterministic pick")
     ap.add_argument("--archived-ref")
     ap.add_argument("--live-ref")
@@ -244,7 +292,13 @@ def main() -> None:
     archived_ref, live_ref = ofac._refs(a)
     archived, live = ofac.load_any(archived_ref), ofac.load_any(live_ref)
     alerts = [json.loads(line) for line in a.alerts.read_text().splitlines() if line.strip()]
-    out_alerts, customers, manifest = build(alerts, archived, live, a.hero)
+    baselines = {}
+    if a.txns.exists():
+        print(f"reading pre-alert history from {a.txns} ...", flush=True)
+        baselines = baseline_monthly(a.txns, alerts)
+    else:
+        print(f"warning: {a.txns} not found; declared volumes fall back to a deterministic pick")
+    out_alerts, customers, manifest = build(alerts, archived, live, a.hero, baselines=baselines)
 
     a.alerts.write_text("".join(json.dumps(x) + "\n" for x in out_alerts))
     (ARTIFACTS / "customers.json").write_text(json.dumps(customers, indent=1))
@@ -257,6 +311,7 @@ def main() -> None:
     print(f"customers: {len(customers)}; linked to SDN: {len(manifest['linked'])} "
           f"({sum(x['cohort'] == 'new' for x in manifest['linked'])} new, "
           f"{sum(x['cohort'] == 'old' for x in manifest['linked'])} old)")
+    print(f"declared volume from history: {sum(str(k) in baselines for k in customers)}/{len(customers)} customers")
     print(f"HERO: {hero['sdn_name']} (#{hero['ent_num']}, {hero['program']}) on alert {hero['alert_id']} "
           f"[{hero['split']}], account {hero['account_id']}")
     print("alerts / suspicious by split:", {k: tuple(v) for k, v in by_split.items()})
