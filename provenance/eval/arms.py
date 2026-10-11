@@ -1,6 +1,7 @@
 """System arms A3 / A4-naive / A4: the full agent graph over an alert split.
 
     python -m provenance.eval.arms --arm A3 --split golden [--upload]
+    python -m provenance.eval.arms --arm A3 --split golden --resume artifacts/eval/A3/<run_id>.jsonl [--upload]
 
 A3        live list, publisher-date freshness (the product)
 A4-naive  archived list, fetch-date freshness (what typical RAG does)
@@ -10,17 +11,25 @@ Rows share the EvalRow schema with A0/A1, so one table compares every arm.
 Confidence is converted to "probability the decision is correct" to match A1.
 In PROVENANCE_MODE=offline the models are scripted: those numbers test the
 plumbing and must never be reported as results.
+
+Each row is appended to the run's jsonl as soon as its case finishes, so an
+interrupted run keeps what it did; --resume reruns only missing and errored
+alerts under the same run_id. A case that fails on the network (DNS, 503,
+connection reset) is retried after a pause; timeouts and model errors are not,
+they are results.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import os
 import time
 import uuid
+from pathlib import Path
 
 from provenance.eval.baselines import run_a0
-from provenance.eval.results import EvalRow, summarize, upload, write_jsonl
+from provenance.eval.results import ARTIFACTS, EvalRow, read_jsonl, summarize, upload, write_jsonl
 from provenance.runtime import get_deps
 from provenance.service.run import CaseError, run_case
 
@@ -31,6 +40,27 @@ ARMS = {
 }
 
 
+NETWORK_RETRIES = 2
+RETRY_WAIT_S = float(os.environ.get("PROVENANCE_RETRY_WAIT_S", "30"))
+_TRANSIENT = {"ServiceUnavailable", "RetryError", "DeadlineExceeded", "ConnectionError", "ConnectionResetError",
+              "gaierror", "_InactiveRpcError", "ConnectError", "ReadError", "RemoteProtocolError"}
+
+
+def is_transient(exc: BaseException) -> bool:
+    """A network or service-availability failure anywhere in the cause chain (not a timeout or model error)."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        seen.add(id(exc))
+        if {c.__name__ for c in type(exc).__mro__} & _TRANSIENT:
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+def run_path(arm: str, run_id: str) -> Path:
+    return ARTIFACTS / arm / f"{run_id}.jsonl"
+
+
 def select_alerts(alerts, split: str, limit: int | None = None) -> list[dict]:
     """Labelled alerts in a split, in a deterministic order; optionally the first `limit`."""
     chosen = sorted((x for x in alerts if "truly_suspicious" in x and split in ("all", x.get("split"))),
@@ -38,27 +68,50 @@ def select_alerts(alerts, split: str, limit: int | None = None) -> list[dict]:
     return chosen[:limit] if limit else chosen
 
 
-async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None) -> list[EvalRow]:
+async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None, sink: Path | None = None) -> list[EvalRow]:
     snapshot, basis = ARMS[arm]
     d = get_deps()
     rows = []
+
+    def keep(row: EvalRow) -> None:
+        rows.append(row)
+        if sink:  # durable as we go: an interrupted run can --resume
+            sink.parent.mkdir(parents=True, exist_ok=True)
+            with open(sink, "a") as f:
+                f.write(row.model_dump_json() + "\n")
+
     for i, a in enumerate(alerts, 1):
         t0 = time.monotonic()
-        try:
-            case = d.repo.get_case(await run_case(a["alert_id"], snapshot, basis, trace=trace))
-        except CaseError as e:
+        for attempt in range(NETWORK_RETRIES + 1):
+            try:
+                case = d.repo.get_case(await run_case(a["alert_id"], snapshot, basis, trace=trace))
+                err = None
+                break
+            except Exception as e:  # noqa: BLE001 - one alert must never end the run
+                err = e
+                if is_transient(e) and attempt < NETWORK_RETRIES:
+                    wait = RETRY_WAIT_S * (attempt + 1)
+                    print(f"  [{i}/{len(alerts)}] {a['alert_id']} network error ({type(e).__name__}); "
+                          f"retrying in {wait:.0f}s", flush=True)
+                    await asyncio.sleep(wait)
+                    continue
+                break
+        if err is not None:
             # A case that doesn't finish is recorded, not dropped: decision "error" never counts as auto-close.
-            print(f"  [{i}/{len(alerts)}] {a['alert_id']} ERROR {e.reason} ({time.monotonic() - t0:.0f}s)", flush=True)
-            rows.append(EvalRow(run_id=run_id, arm=arm, alert_id=a["alert_id"], split=a.get("split", ""),
-                                decision="error", confidence=None, truly_suspicious=bool(a["truly_suspicious"]),
-                                citation_coverage=0.0, hallucinated_entity_rate=None, narrative=e.reason,
-                                model_id=d.mode, latency_ms=int((time.monotonic() - t0) * 1000)))
+            reason = err.reason if isinstance(err, CaseError) else f"{type(err).__name__}: {err}"
+            if is_transient(err):
+                reason = f"network: {reason}"
+            print(f"  [{i}/{len(alerts)}] {a['alert_id']} ERROR {reason[:160]} ({time.monotonic() - t0:.0f}s)", flush=True)
+            keep(EvalRow(run_id=run_id, arm=arm, alert_id=a["alert_id"], split=a.get("split", ""),
+                         decision="error", confidence=None, truly_suspicious=bool(a["truly_suspicious"]),
+                         citation_coverage=0.0, hallucinated_entity_rate=None, narrative=reason[:500],
+                         model_id=d.mode, latency_ms=int((time.monotonic() - t0) * 1000)))
             continue
         cfp = case.get("confidence")
         auto = case["decision"] == "auto_close"
         print(f"  [{i}/{len(alerts)}] {a['alert_id']} {case['decision']}"
               f"{' (suspicious)' if a['truly_suspicious'] else ''} ({time.monotonic() - t0:.0f}s)", flush=True)
-        rows.append(EvalRow(
+        keep(EvalRow(
             run_id=run_id, arm=arm, alert_id=a["alert_id"], split=a.get("split", ""),
             decision=case["decision"],
             confidence=None if cfp is None else (cfp if auto else 1 - cfp),
@@ -72,6 +125,16 @@ async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None) -> list
     return rows
 
 
+def resume_plan(path: Path, alerts: list[dict]) -> tuple[str, list[EvalRow], list[dict]]:
+    """(run_id, finished rows to keep, alerts still to run). Errored alerts are rerun."""
+    prior = read_jsonl(path)
+    if not prior:
+        raise SystemExit(f"{path} has no rows")
+    done = {r.alert_id: r for r in prior if r.decision != "error"}  # last finished row per alert wins
+    todo = [a for a in alerts if a["alert_id"] not in done]
+    return prior[0].run_id, list(done.values()), todo
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--arm", choices=sorted(ARMS))
@@ -79,10 +142,13 @@ def main() -> None:
     ap.add_argument("--split", default="golden", choices=["golden", "eval", "demo", "all"])
     ap.add_argument("--limit", type=int, help="run only the first N alerts (by alert_id) to bound model spend")
     ap.add_argument("--trace", action="store_true", help="print every agent step for each case")
+    ap.add_argument("--resume", type=Path, help="a run's jsonl: keep its finished cases, rerun missing and errored ones")
     ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     if not a.arm and not a.all:
         ap.error("give --arm or --all")
+    if a.resume and (a.all or not a.arm):
+        ap.error("--resume works with one --arm")
     d = get_deps()
     alerts = select_alerts(d.alerts.values(), a.split, a.limit)
     if d.mode == "offline":
@@ -93,7 +159,15 @@ def main() -> None:
             rows = run_a0([{**x, "split": x.get("split", "")} for x in alerts], run_id)
             rows = [r.model_copy(update={"model_id": d.mode}) for r in rows]
         else:
-            rows = asyncio.run(run_arm(arm, alerts, run_id, trace=(lambda x: print('    ' + x, flush=True)) if a.trace else None))
+            kept, todo = [], alerts
+            if a.resume:
+                run_id, kept, todo = resume_plan(a.resume, alerts)
+                print(f"resuming {run_id}: {len(kept)} finished, {len(todo)} to run")
+            sink = run_path(arm, run_id)
+            print(f"rows are saved as they finish to {sink} (resume with --resume {sink})", flush=True)
+            new = asyncio.run(run_arm(arm, todo, run_id, sink=sink,
+                                      trace=(lambda x: print('    ' + x, flush=True)) if a.trace else None))
+            rows = kept + new
         print(f"{arm}: wrote {write_jsonl(rows)}")
         print(json.dumps(summarize(rows), indent=2))
         if a.upload:

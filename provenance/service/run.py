@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import time
 import uuid
@@ -20,6 +21,8 @@ from google.genai import types
 
 from provenance.agents.provenance_agent.agent import APP_NAME, build_app
 from provenance.runtime import get_deps
+
+log = logging.getLogger("provenance")
 
 Snapshot = Literal["archived", "live"]
 Basis = Literal["source_as_of", "retrieved_at"]
@@ -100,16 +103,24 @@ async def run_case(alert_id: str, snapshot: Snapshot = "live", basis: Basis = "s
     try:
         await asyncio.wait_for(drive(), timeout=CASE_TIMEOUT_S)
     except TimeoutError as e:
-        d.repo.update(case_id, {"status": "error", "stage": "error",
-                                "error": f"timed out after {CASE_TIMEOUT_S:.0f}s (PROVENANCE_CASE_TIMEOUT_S)"})
+        _mark_error(case_id, f"timed out after {CASE_TIMEOUT_S:.0f}s (PROVENANCE_CASE_TIMEOUT_S)")
         raise CaseError(case_id, "timeout") from e
     except Exception as e:
-        d.repo.update(case_id, {"status": "error", "stage": "error", "error": f"{type(e).__name__}: {e}"})
+        _mark_error(case_id, f"{type(e).__name__}: {e}")
         raise CaseError(case_id, f"{type(e).__name__}: {e}") from e
     finally:
         if beat:
             beat.cancel()
     return case_id
+
+
+def _mark_error(case_id: str, reason: str) -> None:
+    """Best effort: if the store itself is unreachable (e.g. a network drop), the original failure
+    is what matters, so a failed write here must not replace it."""
+    try:
+        get_deps().repo.update(case_id, {"status": "error", "stage": "error", "error": reason})
+    except Exception as e:  # noqa: BLE001
+        log.warning("could not record error on %s: %s", case_id, e)
 
 
 class CaseError(RuntimeError):
