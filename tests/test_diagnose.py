@@ -62,3 +62,9 @@ def test_counterfactual_scope_turns_excluded_auto_closes_into_escalations():
     meta = {"a0": {"rule": "high_risk_corridor"}, "a1": {"rule": "high_risk_corridor"}, "a3": {"rule": "rapid_movement"}}
     c = dg.counterfactual(rows, meta, {"high_risk_corridor"})
     assert c["auto_close"] == 1 and c["suspicious_auto_closed"] == 0 and c["removed"] == ["a0", "a1"]
+
+
+def test_render_includes_the_standard_summary():
+    rows = [row(0, 0.95, False, decision="auto_close"), row(1, 0.1, True)]
+    out = dg.render(dg.diagnose(rows))
+    assert "summary: auto-close 50.0%" in out and "citation coverage 1.000" in out

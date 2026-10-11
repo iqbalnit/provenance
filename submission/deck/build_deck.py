@@ -379,9 +379,15 @@ def s_cost(s: Slide, n: dict) -> None:
                  f"each (an industry estimate). Every 1% of alerts cleared safely saves {hours / 100:,.0f} hours.",
                  10, INK, line=1.05, after=6),
             para("Auto-close only when all six gate conditions pass, so the saving is bounded by safety, not by the model's eagerness.",
-                 10, MUTED, line=1.05)]
+                 10, MUTED, line=1.05, after=6)]
+    ho = n.get("held_out")
+    if ho:
+        saved = ho["auto_close_rate"] * hours
+        left.append(para(f"**Measured on {ho['n']} held-out alerts:** {ho['auto_close_rate']:.0%} auto-closed, "
+                         f"{ho['suspicious_auto_closed']} suspicious. At that rate the {alerts:,} alerts free about "
+                         f"{saved:,.0f} analyst-hours (an extrapolation from a {ho['n']}-alert sample).", 10, INK, line=1.05))
     card_box = dict(fill=CARD, geom="roundRect", inset=0.14, radius=0.05)
-    box(s, LEFT, TOP + 0.05, w, 2.75, left, **card_box)
+    box(s, LEFT, TOP + 0.05, w, 3.6, left, **card_box)
     rt = n["runtime"]
     right = [para("Running cost per case", 12, INK, SEMI, after=6),
              para(f"**Gemini calls:** {rt['llm_calls_per_case']} per case (typology, evidence agents, up to 3 drafts).", 10, bullet=True, after=4),
@@ -391,7 +397,7 @@ def s_cost(s: Slide, n: dict) -> None:
              para("**Data:** OFAC lists are public; transactions stay in the bank's own BigQuery.", 10, bullet=True, after=4)]
     if n.get("gemini_cost_per_case_usd") is not None:
         right.append(para(f"**Gemini spend:** about ${n['gemini_cost_per_case_usd']:.3f} per case (Cloud Billing).", 10, bullet=True))
-    box(s, LEFT + w + 0.3, TOP + 0.05, w, 2.75, right, **card_box)
+    box(s, LEFT + w + 0.3, TOP + 0.05, w, 3.6, right, **card_box)
 
 
 def s_snapshots(s: Slide) -> None:
@@ -408,7 +414,7 @@ def s_snapshots(s: Slide) -> None:
 
 def s_bench(s: Slide, n: dict) -> None:
     heading(s, "Prototype Performance report/Benchmarking",
-            "Same golden alerts for every arm; the bar is zero suspicious alerts auto-closed")
+            "40 golden alerts per arm plus a held-out check; the bar is zero suspicious alerts auto-closed")
     head = ["Arm", "What runs", "Suspicious auto-closed", "Auto-close rate", "Citation coverage", "Invented entities", "ECE", "n"]
     rows = [head]
     tones = {}

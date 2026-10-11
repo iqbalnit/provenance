@@ -22,7 +22,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from provenance.eval.metrics import ANALYST_MINUTES_PER_ALERT
-from provenance.eval.results import EvalRow, read_jsonl
+from provenance.eval.results import EvalRow, read_jsonl, summarize
 
 THRESHOLDS = [round(0.05 * i, 2) for i in range(1, 20)]
 
@@ -99,6 +99,7 @@ def diagnose(rows: list[EvalRow], rules: dict[str, str] | None = None) -> dict:
                         "best_zero_miss": best_safe(sweep(v))}
                     for k, v in sorted(by_rule.items())},
         "gate_failed": {k: dict(v) for k, v in gate.items()} if any(gate.values()) else None,
+        "summary": summarize(rows) if rows else None,
     }
 
 
@@ -144,9 +145,21 @@ def render_detail(items: list[dict], theta: float) -> str:
     return "\n".join(out)
 
 
+def _summary_line(sm: dict | None) -> str:
+    if not sm:
+        return "summary: no rows"
+    ece = "n/a" if sm.get("ece") is None else f"{sm['ece']:.2f}"
+    cov = "n/a" if sm.get("citation_coverage_mean") is None else f"{sm['citation_coverage_mean']:.3f}"
+    lat = (f"latency p50 {sm['latency_p50_ms'] / 1000:.0f}s p95 {sm['latency_p95_ms'] / 1000:.0f}s"
+           if sm.get("latency_p50_ms") is not None else "latency n/a")
+    return (f"summary: auto-close {sm['auto_close_rate']:.1%}, suspicious auto-closed {sm['tp_auto_closes']}, "
+            f"citation coverage {cov}, ECE {ece}, {lat}")
+
+
 def render(d: dict) -> str:
     out = [f"{d['arm']} {d['run_id']}: n={d['n']} scored={d['scored']} (benign {d['benign']}, suspicious "
            f"{d['suspicious']}), errors={d['errors']}, unverified narratives={d['unverified']}",
+           _summary_line(d.get("summary")),
            f"P(false positive) benign:     {d['p_fp_benign']}",
            f"P(false positive) suspicious: {d['p_fp_suspicious']}",
            f"AUROC (benign ranked above suspicious): {d['auroc']}   0.5 = no separation, 1.0 = perfect", "",

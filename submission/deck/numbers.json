@@ -1,5 +1,5 @@
 {
-  "_comment": "Measured results the deck quotes. Update after each eval run and rebuild; null renders as 'running'.",
+  "_comment": "Measured results the deck quotes; null renders as 'running'. Arms: golden split (40) unless noted. runtime latency and held_out: the A3 eval-split run A3-eval-gemini-74a2050c (100 alerts).",
   "rule_engine": {
     "transactions": 1822214,
     "alerts": 44700,
@@ -52,13 +52,13 @@
     },
     {
       "arm": "A3 held-out",
-      "what": "Rule live, 100 unseen alerts",
-      "n": null,
-      "suspicious_auto_closed": null,
-      "auto_close_rate": null,
-      "citation_coverage": null,
+      "what": "Rule live, 100 unseen (2 suspicious)",
+      "n": 100,
+      "suspicious_auto_closed": "0 of 2",
+      "auto_close_rate": 0.04,
+      "citation_coverage": 1.0,
       "hallucinated_entities": null,
-      "ece": null
+      "ece": 0.48
     },
     {
       "arm": "A4-naive",
@@ -83,8 +83,8 @@
   ],
   "runtime": {
     "llm_calls_per_case": "about 11",
-    "latency_p50_s": 45,
-    "latency_p95_s": 339
+    "latency_p50_s": 39,
+    "latency_p95_s": 79
   },
   "hero": {
     "sdn": "#45815",
@@ -106,5 +106,13 @@
     "A3": 0.536,
     "A4": 0.632,
     "A4-naive": 0.56
+  },
+  "held_out": {
+    "n": 100,
+    "auto_close_rate": 0.04,
+    "suspicious": 2,
+    "suspicious_auto_closed": 0,
+    "escalated_by_corridor_rule": 12,
+    "source": "A3-eval-gemini-74a2050c"
   }
 }
