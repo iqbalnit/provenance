@@ -264,9 +264,9 @@ def s_reversal(s: Slide, n: dict) -> None:
     hero, rr = n["hero"], n["real_reversal"]
     real = [para("On real data, measured", 12, INK, SEMI, after=4),
             para(f"Same {rr['n']} golden alerts, same archived list ({hero['archived_as_of']}), same Gemini: with the "
-                 f"fetch-date clock it auto-closed {rr['naive_auto_closed']}, **{rr['naive_suspicious']} of them suspicious**. "
-                 f"With the publisher clock it closed **{rr['publisher_auto_closed']}**: staleness failed on "
-                 f"{rr['staleness_failed']} of {rr['n']}. The hero, a person OFAC designated after that list "
+                 f"fetch-date clock it auto-closed {rr['naive_auto_closed']}, **including {rr['naive_suspicious']} laundering alerts "
+                 f"Gemini rated as benign**. Reading the publisher's date it closed **none**: it will not decide on a "
+                 f"list 30 months old (staleness failed on {rr['staleness_failed']} of {rr['n']}). The hero, a person OFAC designated after that list "
                  f"(SDN {hero['sdn']}), has no match on the old list and a match on the {hero['live_as_of']} one.",
                  10.5, line=1.05)]
     box(s, LEFT, y + h + 0.42, WIDTH, 1.4, real, fill=CARD, geom="roundRect", inset=0.14, radius=0.06)
@@ -428,9 +428,9 @@ def s_bench(s: Slide, n: dict) -> None:
     y = TOP + 0.05 + 0.36 * len(rows) + 0.2
     w = (WIDTH - 0.25) / 2
     card(s, LEFT, y, w, 1.15, "The reversal, on real data",
-         f"A4-naive vs A4: same alerts, same archived list. The fetch-date clock auto-closed "
-         f"{rr['naive_suspicious']} suspicious alerts; the publisher clock closed none, because staleness "
-         f"failed on {rr['staleness_failed']} of {rr['n']}.", tone="blue", title_sz=11, body_sz=9.5)
+         f"A4-naive vs A4: same alerts, same 30-month-old list. The fetch-date clock auto-closed "
+         f"{rr['naive_suspicious']} laundering alerts Gemini rated benign; the publisher clock refused to close "
+         f"anything (staleness failed on {rr['staleness_failed']} of {rr['n']}).", tone="blue", title_sz=11, body_sz=9.5)
     card(s, LEFT + w + 0.25, y, w, 1.15, "How to read it",
          f"Gemini's own confidence barely separates laundering from benign here (AUROC {min(au.values()):.2f}–"
          f"{max(au.values()):.2f}), so code, not the model, decides. ECE: stated confidence vs real hit rate.",

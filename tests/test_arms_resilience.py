@@ -145,3 +145,18 @@ def test_package_import_selects_the_native_grpc_resolver():
     import provenance  # noqa: F401
 
     assert os.environ.get("GRPC_DNS_RESOLVER") == "native"
+
+
+def test_stale_live_list_stops_a3_but_not_a4(deps, monkeypatch):
+    from dataclasses import replace
+    from datetime import timedelta
+
+    live = deps.watchlists["live"]
+    old = replace(live, as_of=deps.now() - timedelta(days=7))
+    monkeypatch.setitem(deps.watchlists, "live", old)
+    line, ok = arms.watchlist_check("A3", deps)
+    assert not ok and "7.0 days old" in line and "set -a; . ./.env" in line
+    assert arms.watchlist_check("A4", deps)[1]  # archived is stale on purpose
+    assert arms.watchlist_check("A4-naive", deps)[1]  # fetch-date clock never fails staleness
+    monkeypatch.setitem(deps.watchlists, "live", replace(live, as_of=deps.now() - timedelta(days=1)))
+    assert arms.watchlist_check("A3", deps)[1]

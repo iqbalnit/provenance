@@ -33,6 +33,8 @@ import time
 import uuid
 from pathlib import Path
 
+from provenance.core.models import EvidenceType
+from provenance.core.typologies import FRESHNESS_SLA_DAYS
 from provenance.eval.baselines import run_a0
 from provenance.eval.results import ARTIFACTS, EvalRow, read_jsonl, summarize, upload, write_jsonl
 from provenance.runtime import get_deps
@@ -65,6 +67,24 @@ def is_transient(exc: BaseException) -> bool:
 
 class NetworkDown(RuntimeError):
     """Several alerts in a row failed on the network: stop rather than fill the run with error rows."""
+
+
+def watchlist_check(arm: str, d) -> tuple[str, bool]:
+    """(line to print, ok). A live list past its SLA under the publisher clock fails every case on
+    staleness, so the run would measure nothing; the archived list is stale on purpose (A4)."""
+    snapshot, basis = ARMS[arm]
+    snap = d.watchlists[snapshot]
+    age = (d.now() - snap.as_of).total_seconds() / 86400
+    sla = FRESHNESS_SLA_DAYS[EvidenceType.WATCHLIST]
+    line = f"{arm}: {snapshot} watchlist as of {snap.as_of.date()} ({age:.1f} days old; SLA {sla} days, {basis} clock)"
+    if basis != "source_as_of" or age <= sla:
+        return line, True
+    if snapshot == "archived":
+        return line + ": stale by design, every case should fail staleness", True
+    return (line + f"\nSTOPPED: every {arm} case would escalate on staleness. Refresh the live list "
+            "(python -m provenance.data.ofac fetch --live --live-as-of <date> --upload), point "
+            "PROVENANCE_OFAC_LIVE_URI at it, and re-export .env (set -a; . ./.env; set +a): editing .env does not "
+            "change a variable this shell already exported. --allow-stale runs anyway."), False
 
 
 def run_path(arm: str, run_id: str) -> Path:
@@ -159,6 +179,7 @@ def main() -> None:
     ap.add_argument("--limit", type=int, help="run only the first N alerts (by alert_id) to bound model spend")
     ap.add_argument("--trace", action="store_true", help="print every agent step for each case")
     ap.add_argument("--resume", type=Path, help="a run's jsonl: keep its finished cases, rerun missing and errored ones")
+    ap.add_argument("--allow-stale", action="store_true", help="run A3 even if the live watchlist is past its SLA")
     ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
     if not a.arm and not a.all:
@@ -170,7 +191,13 @@ def main() -> None:
     alerts = select_alerts(d.alerts.values(), a.split, a.limit)
     if d.mode == "offline":
         print("NOTE: offline mode uses scripted models; these numbers test plumbing only.")
-    for arm in (["A0", *ARMS] if a.all else [a.arm]):
+    arms_to_run = ["A0", *ARMS] if a.all else [a.arm]
+    for arm in (x for x in arms_to_run if x in ARMS):
+        line, ok = watchlist_check(arm, d)
+        print(line, flush=True)
+        if not ok and not a.allow_stale:
+            raise SystemExit(2)
+    for arm in arms_to_run:
         run_id = f"{arm}-{a.split}-{d.mode}-{uuid.uuid4().hex[:8]}"
         if arm == "A0":
             rows = run_a0([{**x, "split": x.get("split", "")} for x in alerts], run_id)
