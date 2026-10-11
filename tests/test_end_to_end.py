@@ -42,6 +42,8 @@ def failed(case):
 def test_hero_reversal_three_beats():
     naive = run("alt_demo_hero", "archived", "retrieved_at")
     assert naive["decision"] == "auto_close"  # fluent, cited, wrong
+    # KYC is read even though rapid_movement does not require it: the profile is what explains the pattern.
+    assert "kyc" in {x["evidence_type"] for x in naive["claims"]}
 
     asof = run("alt_demo_hero", "archived", "source_as_of")
     assert asof["decision"] == "escalate" and failed(asof) == ["staleness"]

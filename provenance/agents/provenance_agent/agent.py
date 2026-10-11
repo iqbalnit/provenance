@@ -74,7 +74,9 @@ def build_root(mode: str, media_cache: dict | None = None):
     evidence = ParallelAgent(name="evidence", sub_agents=[
         txn,
         watch,
-        steps.Planned(name="kyc", evidence_type=steps.KYC, sub_agents=[steps.KycReader(name="kyc_analyst")]),
+        # KYC is read for every case, required or not: the customer's declared business is what an analyst
+        # clears a false positive with. It is a deterministic read, so it costs no model call.
+        steps.KycReader(name="kyc_analyst"),
         steps.Planned(name="media", evidence_type=steps.MEDIA,
                       sub_agents=[steps.AdverseMedia(name="adverse_media_analyst", sub_agents=[media_search])]),
     ])
