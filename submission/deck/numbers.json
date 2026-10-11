@@ -53,12 +53,12 @@
     {
       "arm": "A4",
       "what": "Archived list, publisher clock",
-      "n": null,
-      "suspicious_auto_closed": null,
-      "auto_close_rate": null,
-      "citation_coverage": null,
+      "n": 40,
+      "suspicious_auto_closed": "0 of 13",
+      "auto_close_rate": 0.0,
+      "citation_coverage": 0.994,
       "hallucinated_entities": null,
-      "ece": null
+      "ece": 0.29
     }
   ],
   "runtime": {
