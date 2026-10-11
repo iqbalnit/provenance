@@ -49,8 +49,8 @@ before recording and cut lines rather than speed up.
 > needed to know its evidence was too old to trust.
 
 **2:15–2:40 · Results** *(screen: `/eval.html` arm table)*
-> On the same golden alerts: plain Gemini auto-closed a suspicious case. Provenance closed none of them, and nothing
-> it closes can carry an uncited sentence. *(Read the final A3 / A4 numbers from the table here; keep it to two numbers.)*
+> On 40 real alerts: plain Gemini auto-closed a suspicious case. Give our system the old sanctions list and a
+> fetch-date clock, and it auto-closes four suspicious alerts. Read the publisher's date instead, and it closes none. *(Read the final A3 / A4 numbers from the table here; keep it to two numbers.)*
 
 **2:40–3:00 · Close** *(screen: deck architecture slide, then the console)*
 > It runs on Cloud Run with Firebase Hosting, Firestore, BigQuery and Gemini on Vertex AI. Provenance: AML

@@ -39,7 +39,7 @@ OPPORTUNITIES = [
 FEATURES_HEADLINE = "Six guarantees, each enforced in code the model cannot talk past"
 FEATURES = [
     ("Claim ledger", "Append-only, content-addressed facts in Firestore, each with source, verbatim quote and two timestamps."),
-    ("Deterministic verifier", "Every sentence must cite a ledger claim. One uncited sentence rejects the whole draft; max 3 drafts."),
+    ("Deterministic verifier", "Every sentence must cite a ledger claim. One uncited sentence rejects the whole draft; on a real run it rejected Gemini's first draft."),
     ("Six-condition gate", "Confidence, mandatory evidence, staleness, citation coverage, no sanctions or PEP hit, typology."),
     ("Two-clock staleness", "Freshness SLAs per evidence type, measured from the publisher's date, not our fetch time."),
     ("Nightly sweep", "Re-checks every auto-closed case against the newest lists and reopens what changed."),

@@ -43,3 +43,14 @@ def test_gate_failed_never_reaches_the_bigquery_payload():
 
     r = row(0, 0.2, False, gate=["confidence"])
     assert "gate_failed" not in json.loads(r.model_dump_json(exclude={"gate_failed"}))
+
+
+def test_detail_shows_label_source_and_what_stopped_each_row():
+    rows = [row(0, 0.95, True, gate=["staleness"]), row(1, 0.92, False, decision="auto_close", gate=[]),
+            row(2, 0.10, True, gate=["confidence", "no_sanctions_or_pep_hit"]), row(3, 0.20, False)]
+    meta = {"a0": {"rule": "rapid_movement", "label_source": "sanctions_exposure", "designated_after_archive": True},
+            "a2": {"rule": "structuring", "label_source": "saml_d"}}
+    items = dg.detail(rows, meta, 0.9)
+    assert [x["alert_id"] for x in items] == ["a0", "a2", "a1"]  # suspicious first, a3 is neither
+    assert items[0]["label_source"] == "sanctions (new)" and items[0]["gate_failed"] == ["staleness"]
+    assert "none" in dg.render_detail(items, 0.9)  # a1 passed every condition

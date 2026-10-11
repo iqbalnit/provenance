@@ -102,11 +102,46 @@ def diagnose(rows: list[EvalRow], rules: dict[str, str] | None = None) -> dict:
     }
 
 
-def _rules(path: Path) -> dict[str, str]:
+def _alert_meta(path: Path) -> dict[str, dict]:
     if not path.exists():
         return {}
-    return {(a := json.loads(line))["alert_id"]: a.get("rule", "unknown")
-            for line in path.read_text().splitlines() if line.strip()}
+    return {(a := json.loads(line))["alert_id"]: a for line in path.read_text().splitlines() if line.strip()}
+
+
+def _rules(path: Path) -> dict[str, str]:
+    return {k: v.get("rule", "unknown") for k, v in _alert_meta(path).items()}
+
+
+def label_source(meta: dict) -> str:
+    """saml_d, or sanctions_exposure with its cohort (new = designated after the archived list)."""
+    src = meta.get("label_source") or "unknown"
+    if src == "sanctions_exposure":
+        return f"sanctions ({'new' if meta.get('designated_after_archive') else 'old'})"
+    return src
+
+
+def detail(rows: list[EvalRow], meta: dict[str, dict], theta: float = 0.90) -> list[dict]:
+    """Every row the model would close at theta, plus every suspicious row: what it was and what stopped it."""
+    out = []
+    for r in rows:
+        p = p_false_positive(r)
+        if not ((p is not None and p >= theta) or r.truly_suspicious):
+            continue
+        m = meta.get(r.alert_id, {})
+        out.append({"alert_id": r.alert_id, "suspicious": r.truly_suspicious, "label_source": label_source(m),
+                    "rule": m.get("rule", "unknown"), "p_fp": None if p is None else round(p, 2),
+                    "decision": r.decision, "gate_failed": r.gate_failed})
+    return sorted(out, key=lambda x: (not x["suspicious"], -(x["p_fp"] or 0)))
+
+
+def render_detail(items: list[dict], theta: float) -> str:
+    out = [f"rows with P(FP) >= {theta} and every suspicious row:",
+           f"  {'alert':16s} {'label':10s} {'source':18s} {'rule':20s} {'P(FP)':>5s}  {'decision':10s} gate failed"]
+    for x in items:
+        out.append(f"  {x['alert_id']:16s} {'SUSPICIOUS' if x['suspicious'] else 'benign':10s} {x['label_source']:18s} "
+                   f"{x['rule']:20s} {x['p_fp'] if x['p_fp'] is not None else '-':>5}  {x['decision']:10s} "
+                   f"{', '.join(x['gate_failed']) if x['gate_failed'] else ('-' if x['gate_failed'] is None else 'none')}")
+    return "\n".join(out)
 
 
 def render(d: dict) -> str:
@@ -138,10 +173,21 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run", type=Path, help="an eval run's jsonl")
     ap.add_argument("--alerts", type=Path, default=Path("artifacts/alerts.jsonl"), help="for the per-rule breakdown")
+    ap.add_argument("--detail", action="store_true", help="list closable and suspicious rows with label source and gate failures")
+    ap.add_argument("--theta", type=float, default=0.90, help="P(false positive) cut-off for --detail")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
-    d = diagnose(read_jsonl(a.run), _rules(a.alerts))
-    print(json.dumps(d, indent=2) if a.json else render(d))
+    rows, meta = read_jsonl(a.run), _alert_meta(a.alerts)
+    d = diagnose(rows, {k: v.get("rule", "unknown") for k, v in meta.items()})
+    if a.detail:
+        d["detail"] = detail(rows, meta, a.theta)
+    if a.json:
+        print(json.dumps(d, indent=2))
+        return
+    print(render(d))
+    if a.detail:
+        print()
+        print(render_detail(d["detail"], a.theta))
 
 
 if __name__ == "__main__":

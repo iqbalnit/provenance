@@ -261,13 +261,15 @@ def s_reversal(s: Slide, n: dict) -> None:
         if k < 2:
             arrow(s, x + w + 0.03, y + h / 2, x + w + gap - 0.03, y + h / 2, MUTED, 1.5)
     box(s, LEFT - 0.08, y + h + 0.05, WIDTH, 0.3, para(C.REVERSAL_CAPTION, 9.5, MUTED))
-    hero = n["hero"]
-    real = [para("On real data", 12, INK, SEMI, after=4),
-            para(f"A real person designated by OFAC after our archived list (SDN {hero['sdn']}) sits on a SAML-D "
-                 f"structuring alert. The {hero['archived_as_of']} list says **no match**; the {hero['live_as_of']} "
-                 f"list says **match**. Each claim stores both dates, so the gate can tell which list it is reading.",
+    hero, rr = n["hero"], n["real_reversal"]
+    real = [para("On real data, measured", 12, INK, SEMI, after=4),
+            para(f"Same {rr['n']} golden alerts, same archived list ({hero['archived_as_of']}), same Gemini: with the "
+                 f"fetch-date clock it auto-closed {rr['naive_auto_closed']}, **{rr['naive_suspicious']} of them suspicious**. "
+                 f"With the publisher clock it closed **{rr['publisher_auto_closed']}**: staleness failed on "
+                 f"{rr['staleness_failed']} of {rr['n']}. The hero, a person OFAC designated after that list "
+                 f"(SDN {hero['sdn']}), has no match on the old list and a match on the {hero['live_as_of']} one.",
                  10.5, line=1.05)]
-    box(s, LEFT, y + h + 0.42, WIDTH, 1.2, real, fill=CARD, geom="roundRect", inset=0.14, radius=0.06)
+    box(s, LEFT, y + h + 0.42, WIDTH, 1.4, real, fill=CARD, geom="roundRect", inset=0.14, radius=0.06)
 
 
 def s_flow(s: Slide) -> None:
@@ -422,15 +424,17 @@ def s_bench(s: Slide, n: dict) -> None:
         if a["citation_coverage"] == 1.0:
             tones[(r, 4)] = GREEN
     table(s, LEFT, TOP + 0.05, [0.75, 2.45, 1.25, 1.0, 1.05, 1.0, 0.85, 0.85], rows, row_h=0.36, sz=9.5, tones=tones)
-    hero = n["hero"]
+    rr, au = n["real_reversal"], n["auroc"]
     y = TOP + 0.05 + 0.36 * len(rows) + 0.2
     w = (WIDTH - 0.25) / 2
-    card(s, LEFT, y, w, 1.15, "Real Gemini, real data: the verifier at work",
-         f"On the hero alert, draft 1 was rejected for {hero['draft1_uncited']} uncited judgment sentences; "
-         f"draft 2 was {hero['draft2_coverage'] * 100:.0f}% cited and accepted.", tone="blue", title_sz=11, body_sz=9.5)
+    card(s, LEFT, y, w, 1.15, "The reversal, on real data",
+         f"A4-naive vs A4: same alerts, same archived list. The fetch-date clock auto-closed "
+         f"{rr['naive_suspicious']} suspicious alerts; the publisher clock closed none, because staleness "
+         f"failed on {rr['staleness_failed']} of {rr['n']}.", tone="blue", title_sz=11, body_sz=9.5)
     card(s, LEFT + w + 0.25, y, w, 1.15, "How to read it",
-         "A1 is plain Gemini on the same alerts. A4-naive vs A4 isolates the clock. ECE: gap between stated "
-         "confidence and real hit rate (lower is better).", title_sz=11, body_sz=9.5)
+         f"Gemini's own confidence barely separates laundering from benign here (AUROC {min(au.values()):.2f}–"
+         f"{max(au.values()):.2f}), so code, not the model, decides. ECE: stated confidence vs real hit rate.",
+         title_sz=11, body_sz=9.5)
 
 
 def s_future(s: Slide) -> None:
