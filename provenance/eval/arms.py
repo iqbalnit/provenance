@@ -136,6 +136,7 @@ async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None, sink: P
             # measured by the citation-fidelity judge (Phase 2), not assumed here.
             hallucinated_entity_rate=None,
             narrative="", model_id=d.mode, latency_ms=int((time.monotonic() - t0) * 1000),
+            gate_failed=[c["name"] for c in (case.get("policy_gate") or {}).get("conditions", []) if not c.get("passed")],
         ))
     return rows
 

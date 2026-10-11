@@ -217,7 +217,7 @@ def s_idea(s: Slide, n: dict) -> None:
     stats = [
         (f"{re_['alerts']:,}", f"alerts from {re_['transactions'] / 1e6:.1f}M transactions: our own rule engine on the SAML-D dataset", None),
         (f"{re_['fp_rate'] * 100:.1f}%", "of those alerts are false positives (SAML-D labels)", None),
-        ("100%", "of sentences Provenance emits cite a ledger claim, enforced by a parser", "blue"),
+        ("100%", "citation coverage required before anything auto-closes; a parser rejects uncited drafts", "blue"),
     ]
     y = TOP + 0.05
     for big, small, tone in stats:

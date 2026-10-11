@@ -39,6 +39,8 @@ class EvalRow(BaseModel):
     model_id: str | None = None
     latency_ms: int | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    # Failed policy-gate conditions, for diagnosis. Local jsonl only: not in the BigQuery schema.
+    gate_failed: list[str] | None = None
 
     @property
     def auto_closed(self) -> bool:
@@ -110,7 +112,7 @@ def upload(rows: Sequence[EvalRow], table: str = "eval_results") -> str:
         time_partitioning=bigquery.TimePartitioning(field="created_at"),
         clustering_fields=["arm"],
     )
-    payload = [json.loads(r.model_dump_json()) for r in rows]
+    payload = [json.loads(r.model_dump_json(exclude={"gate_failed"})) for r in rows]
     client.load_table_from_json(payload, table_id, job_config=job_config).result()
     return table_id
 

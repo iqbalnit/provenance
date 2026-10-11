@@ -30,7 +30,7 @@ OPPORTUNITIES = [
         "A nightly sweep reopens closed cases when the evidence changes.",
     ]),
     ("USP", [
-        "**Cannot emit an uncited claim**: a parser, not a judge model, rejects the draft.",
+        "**Cannot close on an uncited claim**: a parser, not a judge model, rejects any draft with an uncited sentence.",
         "**Knows how old its evidence is**: a 30-month-old sanctions list fails the gate before the new designation is even seen.",
         "Measured against plain Gemini on the same alerts.",
     ]),

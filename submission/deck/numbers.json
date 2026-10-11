@@ -33,12 +33,12 @@
     {
       "arm": "A3",
       "what": "Provenance, live list",
-      "n": 10,
-      "suspicious_auto_closed": "0 of 4",
+      "n": 40,
+      "suspicious_auto_closed": "0 of 13",
       "auto_close_rate": 0.0,
-      "citation_coverage": 1.0,
+      "citation_coverage": 0.966,
       "hallucinated_entities": null,
-      "ece": 0.56
+      "ece": 0.51
     },
     {
       "arm": "A4-naive",
@@ -63,8 +63,8 @@
   ],
   "runtime": {
     "llm_calls_per_case": "about 11",
-    "latency_p50_s": 61,
-    "latency_p95_s": 190
+    "latency_p50_s": 45,
+    "latency_p95_s": 339
   },
   "hero": {
     "sdn": "#45815",
