@@ -16,7 +16,12 @@ Each row is appended to the run's jsonl as soon as its case finishes, so an
 interrupted run keeps what it did; --resume reruns only missing and errored
 alerts under the same run_id. A case that fails on the network (DNS, 503,
 connection reset) is retried after a pause; timeouts and model errors are not,
-they are results.
+they are results. After 3 alerts in a row fail on the network the run stops,
+without summarising or uploading, and prints the --resume command.
+
+Cases are kept in memory (PROVENANCE_STORE=memory): the eval reads them back in
+this process, so Firestore would only add latency and a network dependency. Set
+PROVENANCE_STORE=firestore to keep eval cases for the console.
 """
 from __future__ import annotations
 
@@ -41,6 +46,7 @@ ARMS = {
 
 
 NETWORK_RETRIES = 2
+MAX_CONSECUTIVE_NETWORK_FAILURES = 3
 RETRY_WAIT_S = float(os.environ.get("PROVENANCE_RETRY_WAIT_S", "30"))
 _TRANSIENT = {"ServiceUnavailable", "RetryError", "DeadlineExceeded", "ConnectionError", "ConnectionResetError",
               "gaierror", "_InactiveRpcError", "ConnectError", "ReadError", "RemoteProtocolError"}
@@ -55,6 +61,10 @@ def is_transient(exc: BaseException) -> bool:
             return True
         exc = exc.__cause__ or exc.__context__
     return False
+
+
+class NetworkDown(RuntimeError):
+    """Several alerts in a row failed on the network: stop rather than fill the run with error rows."""
 
 
 def run_path(arm: str, run_id: str) -> Path:
@@ -80,6 +90,7 @@ async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None, sink: P
             with open(sink, "a") as f:
                 f.write(row.model_dump_json() + "\n")
 
+    down = 0
     for i, a in enumerate(alerts, 1):
         t0 = time.monotonic()
         for attempt in range(NETWORK_RETRIES + 1):
@@ -106,7 +117,11 @@ async def run_arm(arm: str, alerts: list[dict], run_id: str, trace=None, sink: P
                          decision="error", confidence=None, truly_suspicious=bool(a["truly_suspicious"]),
                          citation_coverage=0.0, hallucinated_entity_rate=None, narrative=reason[:500],
                          model_id=d.mode, latency_ms=int((time.monotonic() - t0) * 1000)))
+            down = down + 1 if is_transient(err) else 0
+            if down >= MAX_CONSECUTIVE_NETWORK_FAILURES:
+                raise NetworkDown(f"{down} alerts in a row failed on the network")
             continue
+        down = 0
         cfp = case.get("confidence")
         auto = case["decision"] == "auto_close"
         print(f"  [{i}/{len(alerts)}] {a['alert_id']} {case['decision']}"
@@ -149,6 +164,7 @@ def main() -> None:
         ap.error("give --arm or --all")
     if a.resume and (a.all or not a.arm):
         ap.error("--resume works with one --arm")
+    os.environ.setdefault("PROVENANCE_STORE", "memory")
     d = get_deps()
     alerts = select_alerts(d.alerts.values(), a.split, a.limit)
     if d.mode == "offline":
@@ -165,8 +181,12 @@ def main() -> None:
                 print(f"resuming {run_id}: {len(kept)} finished, {len(todo)} to run")
             sink = run_path(arm, run_id)
             print(f"rows are saved as they finish to {sink} (resume with --resume {sink})", flush=True)
-            new = asyncio.run(run_arm(arm, todo, run_id, sink=sink,
-                                      trace=(lambda x: print('    ' + x, flush=True)) if a.trace else None))
+            try:
+                new = asyncio.run(run_arm(arm, todo, run_id, sink=sink,
+                                          trace=(lambda x: print('    ' + x, flush=True)) if a.trace else None))
+            except NetworkDown as e:
+                raise SystemExit(f"\nSTOPPED: {e}. Nothing was summarised or uploaded; finished cases are saved.\n"
+                                 f"Check the network, then rerun with: --resume {sink}") from None
             rows = kept + new
         print(f"{arm}: wrote {write_jsonl(rows)}")
         print(json.dumps(summarize(rows), indent=2))

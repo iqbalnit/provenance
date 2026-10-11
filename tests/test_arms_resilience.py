@@ -103,3 +103,45 @@ def test_store_outage_mid_case_raises_a_retryable_case_error(deps, monkeypatch):
         asyncio.run(run_mod.run_case("alt_demo_grocer", "live", case_id="case_outage"))
     assert "ServiceUnavailable" in e.value.reason
     assert arms.is_transient(e.value)
+
+
+def test_run_stops_after_consecutive_network_failures(deps, monkeypatch, tmp_path):
+    calls = []
+
+    async def down(alert_id, *a, **k):
+        calls.append(alert_id)
+        raise _dns_failure()
+
+    monkeypatch.setattr(arms, "run_case", down)
+    monkeypatch.setattr(arms, "NETWORK_RETRIES", 0)
+    alerts = sorted(deps.alerts.values(), key=lambda x: x["alert_id"])
+    assert len(alerts) >= 4
+    sink = tmp_path / "run.jsonl"
+    with pytest.raises(arms.NetworkDown):
+        asyncio.run(arms.run_arm("A3", alerts[:4], "run", sink=sink))
+    assert calls == [a["alert_id"] for a in alerts[:3]]  # the 4th is never attempted
+    assert [r.decision for r in read_jsonl(sink)] == ["error"] * 3
+
+
+def test_a_finished_case_resets_the_network_failure_count(deps, monkeypatch):
+    real = run_mod.run_case
+    alerts = sorted(deps.alerts.values(), key=lambda x: x["alert_id"])[:4]
+    ok = alerts[2]["alert_id"]
+
+    async def mostly_down(alert_id, *a, **k):
+        if alert_id == ok:
+            return await real(alert_id, *a, **k)
+        raise _dns_failure()
+
+    monkeypatch.setattr(arms, "run_case", mostly_down)
+    monkeypatch.setattr(arms, "NETWORK_RETRIES", 0)
+    rows = asyncio.run(arms.run_arm("A3", alerts, "run"))  # 2 down, 1 ok, 1 down: never 3 in a row
+    assert [r.decision == "error" for r in rows] == [True, True, False, True]
+
+
+def test_package_import_selects_the_native_grpc_resolver():
+    import os
+
+    import provenance  # noqa: F401
+
+    assert os.environ.get("GRPC_DNS_RESOLVER") == "native"

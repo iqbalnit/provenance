@@ -96,7 +96,9 @@ def from_gcp(mode: str = "gemini") -> Deps:  # pragma: no cover - needs GCP
             "archived": load_snapshot_from_gcs(os.environ["PROVENANCE_OFAC_ARCHIVED_URI"], gcs),
             "live": load_snapshot_from_gcs(os.environ["PROVENANCE_OFAC_LIVE_URI"], gcs),
         },
-        repo=CaseRepository(firestore.Client(project=config.project())),
+        # Firestore by default; PROVENANCE_STORE=memory keeps cases in-process (eval runs need nothing more).
+        repo=CaseRepository(FakeFirestore() if os.environ.get("PROVENANCE_STORE") == "memory"
+                            else firestore.Client(project=config.project())),
     )
 
 
