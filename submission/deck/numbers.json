@@ -36,9 +36,9 @@
       "n": 40,
       "suspicious_auto_closed": "3 of 13",
       "auto_close_rate": 0.2,
-      "citation_coverage": null,
+      "citation_coverage": 0.972,
       "hallucinated_entities": null,
-      "ece": null
+      "ece": 0.38
     },
     {
       "arm": "A3 + rule",
@@ -46,7 +46,7 @@
       "n": 40,
       "suspicious_auto_closed": "0 of 13",
       "auto_close_rate": 0.025,
-      "citation_coverage": null,
+      "citation_coverage": 0.972,
       "hallucinated_entities": null,
       "ece": null
     },
