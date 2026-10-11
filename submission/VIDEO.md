@@ -51,7 +51,8 @@ before recording and cut lines rather than speed up.
 **2:15–2:40 · Results** *(screen: `/eval.html` arm table)*
 > On 40 real alerts: plain Gemini auto-closed a suspicious case. Give our system the old sanctions list and a
 > fetch-date clock, and it auto-closes four laundering alerts that Gemini was sure were fine. Read the publisher's
-> date instead, and it refuses to close anything on a list that old. That is why the model never decides alone. *(Read the final A3 / A4 numbers from the table here; keep it to two numbers.)*
+> date instead, and it refuses to close anything on a list that old. Our eval also showed where Gemini can't tell
+> laundering from normal trade, so for those alerts code took the decision away from it. *(Read the final A3 / A4 numbers from the table here; keep it to two numbers.)*
 
 **2:40–3:00 · Close** *(screen: deck architecture slide, then the console)*
 > It runs on Cloud Run with Firebase Hosting, Firestore, BigQuery and Gemini on Vertex AI. Provenance: AML

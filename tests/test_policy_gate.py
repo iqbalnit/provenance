@@ -43,3 +43,11 @@ def test_all_conditions_reported_even_after_failure():
     r = evaluate_gate(GateInput(**{**PASSING, "confidence": 0.1, "citation_coverage": 0.0}))
     assert {c.name for c in r.failed} == {"confidence", "citation_coverage"}
     assert len(r.conditions) == 6
+
+
+def test_rule_out_of_scope_escalates_even_when_everything_else_passes():
+    r = evaluate_gate(GateInput(**PASSING, alert_rule="high_risk_corridor"))
+    assert r.decision is Decision.ESCALATE
+    assert [c.name for c in r.failed] == ["typology_allows_auto_close"]
+    assert "never auto-closed" in r.failed[0].detail
+    assert evaluate_gate(GateInput(**PASSING, alert_rule="structuring")).decision is Decision.AUTO_CLOSE

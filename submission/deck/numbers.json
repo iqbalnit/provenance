@@ -33,6 +33,26 @@
     {
       "arm": "A3",
       "what": "Provenance, live list",
+      "n": 40,
+      "suspicious_auto_closed": "3 of 13",
+      "auto_close_rate": 0.2,
+      "citation_coverage": null,
+      "hallucinated_entities": null,
+      "ece": null
+    },
+    {
+      "arm": "A3 + rule",
+      "what": "Same run, corridor out of scope",
+      "n": 40,
+      "suspicious_auto_closed": "0 of 13",
+      "auto_close_rate": 0.025,
+      "citation_coverage": null,
+      "hallucinated_entities": null,
+      "ece": null
+    },
+    {
+      "arm": "A3 held-out",
+      "what": "Rule live, 100 unseen alerts",
       "n": null,
       "suspicious_auto_closed": null,
       "auto_close_rate": null,
@@ -83,7 +103,7 @@
     "staleness_failed": 40
   },
   "auroc": {
-    "A3": 0.457,
+    "A3": 0.536,
     "A4": 0.632,
     "A4-naive": 0.56
   }

@@ -145,6 +145,7 @@ def probe_verifier(case_id: str) -> dict:
         confidence=float(case.get("confidence") or 0.0),
         now=d.now(),
         staleness_basis=case.get("staleness_basis", "source_as_of"),
+        alert_rule=(d.alerts.get(case.get("alert_id", "")) or {}).get("rule"),
     )
     v = result.verification
     probe = {

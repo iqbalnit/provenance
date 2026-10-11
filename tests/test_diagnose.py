@@ -54,3 +54,11 @@ def test_detail_shows_label_source_and_what_stopped_each_row():
     assert [x["alert_id"] for x in items] == ["a0", "a2", "a1"]  # suspicious first, a3 is neither
     assert items[0]["label_source"] == "sanctions (new)" and items[0]["gate_failed"] == ["staleness"]
     assert "none" in dg.render_detail(items, 0.9)  # a1 passed every condition
+
+
+def test_counterfactual_scope_turns_excluded_auto_closes_into_escalations():
+    rows = [row(0, 0.95, True, decision="auto_close"), row(1, 0.92, False, decision="auto_close"),
+            row(2, 0.10, True), row(3, 0.93, False, decision="auto_close")]
+    meta = {"a0": {"rule": "high_risk_corridor"}, "a1": {"rule": "high_risk_corridor"}, "a3": {"rule": "rapid_movement"}}
+    c = dg.counterfactual(rows, meta, {"high_risk_corridor"})
+    assert c["auto_close"] == 1 and c["suspicious_auto_closed"] == 0 and c["removed"] == ["a0", "a1"]

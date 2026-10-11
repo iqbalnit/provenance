@@ -169,18 +169,35 @@ def render(d: dict) -> str:
     return "\n".join(out)
 
 
+def counterfactual(rows: list[EvalRow], meta: dict[str, dict], exclude_rules: set[str]) -> dict:
+    """The same run as if `exclude_rules` were out of auto-close scope: their auto-closes become escalations.
+    Valid on recorded rows because the scope rule depends only on the alert's rule, not on the model."""
+    closed = [r for r in rows if r.auto_closed and meta.get(r.alert_id, {}).get("rule") not in exclude_rules]
+    n = len(rows)
+    return {"excluded_rules": sorted(exclude_rules), "n": n, "auto_close": len(closed),
+            "auto_close_rate": round(len(closed) / n, 3) if n else 0.0,
+            "suspicious_auto_closed": sum(r.truly_suspicious for r in closed),
+            "suspicious": sum(r.truly_suspicious for r in rows),
+            "analyst_hours_saved": round(sum(not r.truly_suspicious for r in closed) * ANALYST_MINUTES_PER_ALERT / 60, 2),
+            "removed": sorted(r.alert_id for r in rows if r.auto_closed and r not in closed)}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run", type=Path, help="an eval run's jsonl")
     ap.add_argument("--alerts", type=Path, default=Path("artifacts/alerts.jsonl"), help="for the per-rule breakdown")
     ap.add_argument("--detail", action="store_true", help="list closable and suspicious rows with label source and gate failures")
     ap.add_argument("--theta", type=float, default=0.90, help="P(false positive) cut-off for --detail")
+    ap.add_argument("--exclude-rules", nargs="+", default=[], metavar="RULE",
+                    help="what-if on the same run: these rules never auto-close")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     rows, meta = read_jsonl(a.run), _alert_meta(a.alerts)
     d = diagnose(rows, {k: v.get("rule", "unknown") for k, v in meta.items()})
     if a.detail:
         d["detail"] = detail(rows, meta, a.theta)
+    if a.exclude_rules:
+        d["counterfactual"] = counterfactual(rows, meta, set(a.exclude_rules))
     if a.json:
         print(json.dumps(d, indent=2))
         return
@@ -188,6 +205,11 @@ def main() -> None:
     if a.detail:
         print()
         print(render_detail(d["detail"], a.theta))
+    if a.exclude_rules:
+        c = d["counterfactual"]
+        print(f"\nsame run with {', '.join(c['excluded_rules'])} out of auto-close scope: {c['auto_close']} auto-closed "
+              f"({c['auto_close_rate']:.1%}), {c['suspicious_auto_closed']} of {c['suspicious']} suspicious, "
+              f"{c['analyst_hours_saved']} analyst-hours saved; now escalated: {', '.join(c['removed']) or 'none'}")
 
 
 if __name__ == "__main__":

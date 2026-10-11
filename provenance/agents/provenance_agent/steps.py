@@ -162,6 +162,7 @@ class VerifyAndGate(BaseAgent):
             confidence=float(draft.get("confidence_false_positive", 0.0)),
             now=d.now(),
             staleness_basis=st["staleness_basis"],
+            alert_rule=(st.get("alert") or {}).get("rule"),
         )
         v = result.verification
         record = {

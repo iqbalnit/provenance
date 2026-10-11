@@ -5,7 +5,7 @@
                  AND staleness_penalty == 0
                  AND citation_coverage == 1.0
                  AND no sanctions/PEP hit at any confidence
-                 AND typology not in NEVER_AUTO_CLOSE
+                 AND typology not in NEVER_AUTO_CLOSE and alert rule not in NEVER_AUTO_CLOSE_RULES
     else escalate_with_case_file
 
 Six conditions, five deterministic, one a model score. Every condition is
@@ -16,7 +16,7 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 from provenance.core.models import Decision, EvidenceType, Typology
-from provenance.core.typologies import MANDATORY_EVIDENCE, NEVER_AUTO_CLOSE
+from provenance.core.typologies import MANDATORY_EVIDENCE, NEVER_AUTO_CLOSE, NEVER_AUTO_CLOSE_RULES
 
 DEFAULT_THETA = 0.90
 
@@ -31,6 +31,8 @@ class GateInput(BaseModel):
     theta: float = DEFAULT_THETA
     # Evidence types where the injection guard withheld untrusted content.
     withheld_evidence: set[EvidenceType] = set()
+    # The rule that raised the alert; some are out of auto-close scope by measurement.
+    alert_rule: str | None = None
 
 
 class GateCondition(BaseModel):
@@ -89,8 +91,9 @@ def evaluate_gate(g: GateInput) -> GateResult:
         ),
         GateCondition(
             name="typology_allows_auto_close",
-            passed=g.typology not in NEVER_AUTO_CLOSE,
-            detail=g.typology.value,
+            passed=g.typology not in NEVER_AUTO_CLOSE and g.alert_rule not in NEVER_AUTO_CLOSE_RULES,
+            detail=(f"{g.alert_rule} alerts are never auto-closed (measured: the model cannot separate them)"
+                    if g.alert_rule in NEVER_AUTO_CLOSE_RULES else g.typology.value),
         ),
     ]
     decision = Decision.AUTO_CLOSE if all(c.passed for c in conditions) else Decision.ESCALATE

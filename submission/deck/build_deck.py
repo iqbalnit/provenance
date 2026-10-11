@@ -423,18 +423,18 @@ def s_bench(s: Slide, n: dict) -> None:
             tones[(r, 2)] = RED
         if a["citation_coverage"] == 1.0:
             tones[(r, 4)] = GREEN
-    table(s, LEFT, TOP + 0.05, [0.75, 2.45, 1.25, 1.0, 1.05, 1.0, 0.85, 0.85], rows, row_h=0.36, sz=9.5, tones=tones)
+    table(s, LEFT, TOP + 0.05, [0.95, 2.35, 1.2, 0.95, 1.0, 0.95, 0.8, 1.0], rows, row_h=0.3, sz=9, tones=tones)
     rr, au = n["real_reversal"], n["auroc"]
-    y = TOP + 0.05 + 0.36 * len(rows) + 0.2
+    y = TOP + 0.05 + 0.3 * len(rows) + 0.15
     w = (WIDTH - 0.25) / 2
-    card(s, LEFT, y, w, 1.15, "The reversal, on real data",
+    card(s, LEFT, y, w, 1.2, "The reversal, on real data",
          f"A4-naive vs A4: same alerts, same 30-month-old list. The fetch-date clock auto-closed "
          f"{rr['naive_suspicious']} laundering alerts Gemini rated benign; the publisher clock refused to close "
-         f"anything (staleness failed on {rr['staleness_failed']} of {rr['n']}).", tone="blue", title_sz=11, body_sz=9.5)
-    card(s, LEFT + w + 0.25, y, w, 1.15, "How to read it",
-         f"Gemini's own confidence barely separates laundering from benign here (AUROC {min(au.values()):.2f}–"
-         f"{max(au.values()):.2f}), so code, not the model, decides. ECE: stated confidence vs real hit rate.",
-         title_sz=11, body_sz=9.5)
+         f"anything (staleness failed on {rr['staleness_failed']} of {rr['n']}).", tone="blue", title_sz=11, body_sz=9)
+    card(s, LEFT + w + 0.25, y, w, 1.2, "How to read it",
+         f"Gemini's confidence barely separates laundering from benign (AUROC {min(au.values()):.2f}–"
+         f"{max(au.values()):.2f}). Every suspicious alert it would close was a high-risk-corridor alert, so code "
+         f"took that rule out of auto-close. ECE: confidence vs real hit rate.", title_sz=11, body_sz=9)
 
 
 def s_future(s: Slide) -> None:

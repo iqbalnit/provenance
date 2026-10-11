@@ -31,6 +31,7 @@ def decide_case(
     now: datetime,
     theta: float = DEFAULT_THETA,
     staleness_basis: Basis = "source_as_of",
+    alert_rule: str | None = None,
 ) -> CaseDecision:
     verification = verify_narrative(narrative, ledger)
     staleness = audit_staleness(ledger, now, basis=staleness_basis)
@@ -44,6 +45,7 @@ def decide_case(
             sanctions_or_pep_hit=has_sanctions_or_pep_hit(ledger),
             withheld_evidence=withheld_evidence(ledger),
             theta=theta,
+            alert_rule=alert_rule,
         )
     )
     return CaseDecision(decision=gate.decision, verification=verification, staleness=staleness, gate=gate)

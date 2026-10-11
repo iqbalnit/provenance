@@ -24,6 +24,12 @@ MVP_TYPOLOGIES: frozenset[T] = frozenset(
 
 NEVER_AUTO_CLOSE: frozenset[T] = frozenset({T.SANCTIONS_NEXUS})
 
+# Alert rules taken out of auto-close by measurement, not by assumption. On the golden set
+# Gemini could not separate laundering from benign high-risk-corridor alerts (AUROC 0.45-0.58
+# across three real runs), and every suspicious alert it would have closed (7 of 7) was one.
+# Back in scope only when an eval shows the model separating them.
+NEVER_AUTO_CLOSE_RULES: frozenset[str] = frozenset({"high_risk_corridor"})
+
 # Freshness SLA per evidence type, in days.
 FRESHNESS_SLA_DAYS: dict[E, int] = {
     E.WATCHLIST: 3,  # OFAC SDN updates on business days; 3 covers a weekend
