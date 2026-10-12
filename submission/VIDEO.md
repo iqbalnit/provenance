@@ -44,7 +44,7 @@ before recording and cut lines rather than speed up.
 **1:40–2:15 · The reversal** *(screen: deployed console, demo hero, press "Run the reversal")*
 > Now the part most systems get wrong. Same alert, same model, three runs. With an old sanctions list that we
 > fetched this morning, a typical system thinks its evidence is fresh, and auto-closes. Provenance reads the
-> publisher's date: the list is 30 months old against a 3-day limit, so it escalates before it ever sees the new
+> publisher's date: the list is 19 months old against a 3-day limit, so it escalates before it ever sees the new
 > designation. With the live list, the match appears. It didn't need to know the customer was designated. It only
 > needed to know its evidence was too old to trust.
 

@@ -51,7 +51,7 @@ FEATURES_FOOTER = ("Also: name-blind typology, analyst review that feeds eval la
 REVERSAL_HEADLINE = "Same alert, same model: only the clock changes the outcome"
 REVERSAL_TILES = [
     ("1 · Archived list, fetch-date clock", "AUTO-CLOSE", "All six gate conditions pass. A typical RAG system stops here.", "green"),
-    ("2 · Archived list, publisher clock", "ESCALATE", "The list is 30 months past a 3-day SLA, so the staleness condition fails.", "amber"),
+    ("2 · Archived list, publisher clock", "ESCALATE", "The list is 19 months past a 3-day SLA, so the staleness condition fails.", "amber"),
     ("3 · Live list", "ESCALATE", "The new designation appears: sanctions hit, case file and SAR draft.", "amber"),
 ]
 REVERSAL_CAPTION = "Labelled demo case with a fictional customer, run by the deployed console."
