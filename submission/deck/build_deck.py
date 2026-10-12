@@ -402,15 +402,18 @@ def s_cost(s: Slide, n: dict) -> None:
 
 
 def s_snapshots(s: Slide) -> None:
-    heading(s, "Snapshots of the prototype", "The analyst console: decision, gate, verifier drafts and the reversal")
+    heading(s, "Snapshots of the prototype", "The live console on Gemini: the reversal, the gate and a cited decision")
     shots = HERE / "screenshots"
-    # case_result 1848x1074 (1.72:1), reversal 1848x249 (7.42:1), ledger 1848x1110
-    picture(s, shots / "case_result.jpg", LEFT, TOP + 0.05, 5.4, 5.4 / 1.721, "Decision, policy gate and verifier drafts")
-    picture(s, shots / "reversal.jpg", 5.95, TOP + 0.05, 3.65, 3.65 / 7.42, "The reversal, three ways")
-    picture(s, shots / "ledger.jpg", 5.95, TOP + 0.75, 3.65, 3.65 / 1.665, "Claim ledger with two timestamps")
-    box(s, 5.9, TOP + 0.75 + 3.65 / 1.665 + 0.05, 3.75, 0.7,
-        para("Demo bundle (fictional customer), recorded locally on scripted models. The deployed URL runs the same console on Gemini.",
-             8.5, MUTED, line=1.0), inset=0.03)
+    # live_decision 2000x740 (2.703:1), live_reversal 1640x218 (7.523:1), live_ledger 1637x680 (2.407:1)
+    picture(s, shots / "live_decision.jpg", LEFT, TOP + 0.05, 5.4, 5.4 / 2.703,
+            "Decision, six-condition gate and the accepted, fully cited draft")
+    picture(s, shots / "live_reversal.jpg", LEFT, TOP + 0.05 + 5.4 / 2.703 + 0.15, 5.4, 5.4 / 7.523,
+            "The reversal: same alert, three runs")
+    picture(s, shots / "live_ledger.jpg", 5.95, TOP + 0.05, 3.65, 3.65 / 2.407, "Claim ledger with two timestamps")
+    box(s, 5.9, TOP + 0.05 + 3.65 / 2.407 + 0.08, 3.75, 0.9,
+        para("Deployed console on Gemini (Vertex AI), labelled demo case with a fictional customer. Card 1 closes "
+             "because the KYC profile explains the pattern; cards 2 and 3 escalate on staleness and on the sanctions hit.",
+             9, MUTED, line=1.05), inset=0.03)
 
 
 def s_bench(s: Slide, n: dict) -> None:
