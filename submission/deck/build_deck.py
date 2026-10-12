@@ -264,9 +264,9 @@ def s_reversal(s: Slide, n: dict) -> None:
     hero, rr = n["hero"], n["real_reversal"]
     real = [para("On real data, measured", 12, INK, SEMI, after=4),
             para(f"Same {rr['n']} golden alerts, same archived list ({hero['archived_as_of']}), same Gemini: with the "
-                 f"fetch-date clock it auto-closed {rr['naive_auto_closed']}, **including {rr['naive_suspicious']} laundering alerts "
-                 f"Gemini rated as benign**. Reading the publisher's date it closed **none**: it will not decide on a "
-                 f"list 30 months old (staleness failed on {rr['staleness_failed']} of {rr['n']}). The hero, a person OFAC designated after that list "
+                 f"fetch-date clock it made **{rr['naive_auto_closed']} auto-close decisions** on a list 30 months old. "
+                 f"Reading the publisher's date it refused **all of them** (staleness failed on {rr['staleness_failed']} "
+                 f"of {rr['n']}). The hero, a person OFAC designated after that list "
                  f"(SDN {hero['sdn']}), has no match on the old list and a match on the {hero['live_as_of']} one.",
                  10.5, line=1.05)]
     box(s, LEFT, y + h + 0.42, WIDTH, 1.4, real, fill=CARD, geom="roundRect", inset=0.14, radius=0.06)
@@ -383,9 +383,10 @@ def s_cost(s: Slide, n: dict) -> None:
     ho = n.get("held_out")
     if ho:
         saved = ho["auto_close_rate"] * hours
-        left.append(para(f"**Measured on {ho['n']} held-out alerts:** {ho['auto_close_rate']:.0%} auto-closed, "
+        left.append(para(f"**Measured on {ho['n']} held-out alerts:** {ho['auto_close_rate']:.0%} cleared, "
                          f"{ho['suspicious_auto_closed']} suspicious. At that rate the {alerts:,} alerts free about "
-                         f"{saved:,.0f} analyst-hours (an extrapolation from a {ho['n']}-alert sample).", 10, INK, line=1.05))
+                         f"{saved:,.0f} analyst-hours (an extrapolation from a {ho['n']}-alert sample; rapid-movement "
+                         f"closes are analyst-confirmed for now).", 10, INK, line=1.05))
     card_box = dict(fill=CARD, geom="roundRect", inset=0.14, radius=0.05)
     box(s, LEFT, TOP + 0.05, w, 3.6, left, **card_box)
     rt = n["runtime"]
@@ -434,13 +435,14 @@ def s_bench(s: Slide, n: dict) -> None:
     y = TOP + 0.05 + 0.3 * len(rows) + 0.15
     w = (WIDTH - 0.25) / 2
     card(s, LEFT, y, w, 1.2, "The reversal, on real data",
-         f"A4-naive vs A4: same alerts, same 30-month-old list. The fetch-date clock auto-closed "
-         f"{rr['naive_suspicious']} laundering alerts Gemini rated benign; the publisher clock refused to close "
-         f"anything (staleness failed on {rr['staleness_failed']} of {rr['n']}).", tone="blue", title_sz=11, body_sz=9)
+         f"A4-naive vs A4: same alerts, same 30-month-old list. The fetch-date clock made "
+         f"{rr['naive_auto_closed']} auto-close decisions on it; the publisher clock refused all of them "
+         f"(staleness failed on {rr['staleness_failed']} of {rr['n']}).", tone="blue", title_sz=11, body_sz=9)
     card(s, LEFT + w + 0.25, y, w, 1.2, "How to read it",
          f"Gemini's confidence barely separates laundering from benign (AUROC {min(au.values()):.2f}–"
-         f"{max(au.values()):.2f}). Every suspicious alert it would close was a high-risk-corridor alert, so code "
-         f"took that rule out of auto-close. ECE: confidence vs real hit rate.", title_sz=11, body_sz=9)
+         f"{max(au.values()):.2f}). Corridor alerts never auto-close; rapid-movement missed 1 of 13 on golden, so "
+         f"those closes run in shadow mode (an analyst confirms) until a larger labelled set shows zero misses.",
+         title_sz=11, body_sz=9)
 
 
 def s_future(s: Slide) -> None:

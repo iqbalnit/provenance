@@ -1,5 +1,5 @@
 {
-  "_comment": "Measured results the deck quotes; null renders as 'running'. Arms: golden split (40) unless noted. runtime latency and held_out: the A3 eval-split run A3-eval-gemini-74a2050c (100 alerts).",
+  "_comment": "Measured results the deck quotes; null renders as 'running'. Current product (KYC on every alert, high_risk_corridor out of auto-close scope). Golden runs: A3-golden-gemini-485b8ba4, A4-naive-golden-gemini-bb8a3df2, A4-golden-gemini-ed5ca408; held-out and runtime: A3-eval-gemini-b9c91749. A0/A1 from the baseline runs.",
   "rule_engine": {
     "transactions": 1822214,
     "alerts": 44700,
@@ -34,41 +34,31 @@
       "arm": "A3",
       "what": "Provenance, live list",
       "n": 40,
-      "suspicious_auto_closed": "3 of 13",
-      "auto_close_rate": 0.2,
-      "citation_coverage": 0.972,
+      "suspicious_auto_closed": "1 of 13",
+      "auto_close_rate": 0.125,
+      "citation_coverage": 0.997,
       "hallucinated_entities": null,
-      "ece": 0.38
-    },
-    {
-      "arm": "A3 + rule",
-      "what": "Same run, corridor out of scope",
-      "n": 40,
-      "suspicious_auto_closed": "0 of 13",
-      "auto_close_rate": 0.025,
-      "citation_coverage": 0.972,
-      "hallucinated_entities": null,
-      "ece": null
+      "ece": 0.54
     },
     {
       "arm": "A3 held-out",
-      "what": "Rule live, 100 unseen (2 suspicious)",
+      "what": "100 unseen alerts (2 suspicious)",
       "n": 100,
       "suspicious_auto_closed": "0 of 2",
-      "auto_close_rate": 0.04,
-      "citation_coverage": 1.0,
+      "auto_close_rate": 0.11,
+      "citation_coverage": 0.979,
       "hallucinated_entities": null,
-      "ece": 0.48
+      "ece": 0.62
     },
     {
       "arm": "A4-naive",
       "what": "Archived list, fetch-date clock",
       "n": 40,
-      "suspicious_auto_closed": "4 of 13",
-      "auto_close_rate": 0.225,
-      "citation_coverage": 1.0,
+      "suspicious_auto_closed": "0 of 13",
+      "auto_close_rate": 0.15,
+      "citation_coverage": 0.925,
       "hallucinated_entities": null,
-      "ece": 0.32
+      "ece": 0.5
     },
     {
       "arm": "A4",
@@ -76,15 +66,15 @@
       "n": 40,
       "suspicious_auto_closed": "0 of 13",
       "auto_close_rate": 0.0,
-      "citation_coverage": 0.994,
+      "citation_coverage": 1.0,
       "hallucinated_entities": null,
-      "ece": 0.29
+      "ece": 0.54
     }
   ],
   "runtime": {
     "llm_calls_per_case": "about 11",
-    "latency_p50_s": 39,
-    "latency_p95_s": 79
+    "latency_p50_s": 43,
+    "latency_p95_s": 114
   },
   "hero": {
     "sdn": "#45815",
@@ -97,22 +87,21 @@
   "gemini_cost_per_case_usd": null,
   "real_reversal": {
     "n": 40,
-    "naive_auto_closed": 9,
-    "naive_suspicious": 4,
+    "naive_auto_closed": 6,
+    "naive_suspicious": 0,
     "publisher_auto_closed": 0,
     "staleness_failed": 40
   },
   "auroc": {
     "A3": 0.536,
-    "A4": 0.632,
-    "A4-naive": 0.56
+    "A4-naive": 0.517
   },
   "held_out": {
     "n": 100,
-    "auto_close_rate": 0.04,
+    "auto_close_rate": 0.11,
     "suspicious": 2,
     "suspicious_auto_closed": 0,
     "escalated_by_corridor_rule": 12,
-    "source": "A3-eval-gemini-74a2050c"
+    "source": "A3-eval-gemini-b9c91749"
   }
 }

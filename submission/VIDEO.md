@@ -49,10 +49,10 @@ before recording and cut lines rather than speed up.
 > needed to know its evidence was too old to trust.
 
 **2:15–2:40 · Results** *(screen: `/eval.html` arm table)*
-> On 40 real alerts: plain Gemini auto-closed a suspicious case. Give our system the old sanctions list and a
-> fetch-date clock, and it auto-closes four laundering alerts that Gemini was sure were fine. Read the publisher's
-> date instead, and it refuses to close anything on a list that old. Our eval also showed where Gemini can't tell
-> laundering from normal trade, so for those alerts code took the decision away from it. *(Read the final A3 / A4 numbers from the table here; keep it to two numbers.)*
+> On 40 real alerts, plain Gemini auto-closed a laundering case. Ours missed one too: a rapid-movement pattern
+> Gemini can't tell apart. So those closes go to an analyst to confirm, and corridor alerts never auto-close.
+> Give it a 30-month-old sanctions list and a fetch-date clock, and it makes six auto-close decisions. Read the
+> publisher's date, and it refuses all of them.
 
 **2:40–3:00 · Close** *(screen: deck architecture slide, then the console)*
 > It runs on Cloud Run with Firebase Hosting, Firestore, BigQuery and Gemini on Vertex AI. Provenance: AML

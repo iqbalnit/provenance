@@ -61,7 +61,7 @@ FUTURE = [
     ("Next", [
         "Model Armor in front of all web content by default (adapter built).",
         "PEP and commercial adverse-media sources as new evidence types.",
-        "Bring high-risk-corridor alerts back into scope once pre-alert baseline evidence lifts the model above chance.",
+        "Earn auto-close back per rule with evidence: pre-alert baseline for corridor alerts; zero misses on a larger labelled set before rapid-movement leaves shadow mode.",
     ]),
     ("Production path", [
         "Case-management and SAR-filing integration, with the analyst always signing.",
