@@ -98,7 +98,7 @@ Also in the console:
   Populate it with `uv run python -m provenance.eval.arms --all`.
 
 One alert from the CLI: `uv run python -m provenance.service.run alt_demo_hero --snapshot archived`.
-Tests: `uv run pytest` (68 tests: core guarantees, data tools, the full graph end to end, sweep, review, injection guard, the API).
+Tests: `uv run pytest` (core guarantees, data tools, the full graph end to end, sweep, review, injection guard, the API).
 
 ## Deploy
 
