@@ -78,7 +78,8 @@ pre.sar { white-space: pre-wrap; font-family: var(--mono); font-size: 12px; back
 header nav { display: flex; gap: 14px; margin-left: auto; }
 header nav a { color: var(--muted); text-decoration: none; } header nav a.on { color: var(--ink); font-weight: 600; }
 header .badge { margin-left: 0; }
-.controls { grid-template-columns: 2fr 1.4fr 1.6fr auto auto auto; }
+.controls { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+.seg button { white-space: nowrap; flex: 1 0 auto; }
 .review { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 8px; }
 .review .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .review input { flex: 1; min-width: 160px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; }
@@ -90,12 +91,23 @@ header .badge { margin-left: 0; }
 .notice { padding: 10px 14px; border-radius: 8px; background: var(--amber-soft); color: var(--amber); margin-top: 10px; }
 .notice a { color: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; }
 #sweepout { font-size: 13px; }
+/* A term with a definition on hover or focus. */
+.term { border-bottom: 1px dotted currentColor; cursor: help; position: relative; outline: none; }
+.term:hover::after, .term:focus::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 10;
+  width: max-content; max-width: 280px; padding: 8px 10px; border-radius: 6px; background: var(--ink); color: var(--panel);
+  font: 400 12px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; text-transform: none; letter-spacing: 0; white-space: normal;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.demos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.demo { display: grid; gap: 6px; align-content: start; border: 1px dashed var(--line); border-radius: 8px; padding: 12px; }
+.demo .btn { justify-self: start; }
+.demo p { margin: 0; font-size: 12px; color: var(--muted); }
+#bootmsg:empty { display: none; }
 main > *, .grid2 > *, .controls > * { min-width: 0; }
 select { width: 100%; }
 .seg button { min-width: 0; }
 .ledger-wrap { overflow-x: auto; }
 @media (max-width: 900px) {
-  .controls, .grid2, .reversal { grid-template-columns: 1fr; }
+  .controls, .grid2, .reversal, .demos { grid-template-columns: 1fr; }
   main { padding: 16px; }
   header { padding: 12px 16px; flex-wrap: wrap; }
   header .tag { display: none; }
@@ -115,24 +127,37 @@ select { width: 100%; }
   <section class="card">
     <h2>Run an alert</h2>
     <div class="controls">
-      <label class="f">Alert<select id="alert"></select></label>
+      <label class="f"><span><span class="term" tabindex="0" data-tip="Raised by the bank's monitoring system when a rule fires. Provenance decides whether it is a false alarm.">Alert</span></span><select id="alert" disabled><option>Loading alerts…</option></select></label>
       <label class="f">Sanctions list<div class="seg" id="snap"></div></label>
-      <label class="f">Freshness clock<div class="seg" id="basis">
+      <label class="f"><span><span class="term" tabindex="0" data-tip="How the age of evidence is measured. Publisher date: when the source says the fact was true. Fetch date: when we downloaded it, which makes old data look new.">Freshness clock</span></span><div class="seg" id="basis">
         <button data-v="source_as_of" class="on">Publisher date</button>
         <button data-v="retrieved_at">Fetch date (naive)</button></div></label>
-      <button class="btn" id="run">Run</button>
-      <button class="btn ghost" id="rev" title="Run the hero alert three ways side by side">Run the reversal</button>
-      <button class="btn ghost" id="sweep" title="Re-check every auto-closed case against the live list">Run nightly sweep</button>
+      <button class="btn" id="run" disabled>Run</button>
+    </div>
+    <div id="bootmsg" class="notice"></div>
+  </section>
+
+  <section class="card">
+    <h2>Demo scenarios</h2>
+    <div class="demos">
+      <div class="demo">
+        <button class="btn ghost sm" id="rev" disabled>Same alert, old vs live sanctions list</button>
+        <p>Runs the demo alert on an old list and on today's list, side by side.</p>
+      </div>
+      <div class="demo">
+        <button class="btn ghost sm" id="sweep" disabled>Re-check closed cases</button>
+        <p>Checks auto-closed cases against today's sanctions list and reopens any whose evidence changed.</p>
+      </div>
     </div>
   </section>
 
   <section class="card hide" id="revcard">
-    <h2>The reversal: same alert, three ways</h2>
+    <h2>Same alert, three ways: click a result to see its details</h2>
     <div class="reversal" id="tiles"></div>
   </section>
 
   <section class="card hide" id="sweepcard">
-    <h2>Staleness sweep: re-check auto-closed cases against today's evidence</h2>
+    <h2>Re-check closed cases: auto-closed cases checked again against today's sanctions list</h2>
     <div id="sweepout"></div>
   </section>
 
@@ -154,14 +179,14 @@ select { width: 100%; }
           <button class="btn ghost sm" data-v="false_positive">False positive: close</button></div>
         <div class="hist" id="hist"></div>
       </div>
-      <div class="gate" style="margin-top:14px"><h2>Policy gate: all six must pass to auto-close</h2><ul id="gate"></ul></div>
+      <div class="gate" style="margin-top:14px"><h2><span class="term" tabindex="0" data-tip="Rule-based checks, not AI. The case closes without an analyst only if all six pass.">Policy gate</span>: all six must pass to auto-close</h2><ul id="gate"></ul></div>
     </section>
     <section class="card">
-      <h2>Disposition drafts: the deterministic verifier rejects uncited sentences</h2>
+      <h2><span class="term" tabindex="0" data-tip="The written reason for the decision. Auditors read it, so every sentence must cite a fact in the claim ledger. A rule-based check rejects any draft with an uncited sentence.">Disposition</span>: the reason for the decision</h2>
       <div id="drafts"></div>
-      <div class="probe hide" id="probebar">
-        <button class="btn ghost sm" id="probe">Probe the verifier</button>
-        <span class="muted">Adds one sentence with no citation to the accepted narrative and re-runs the verifier and gate. The case's decision is not changed.</span>
+      <div class="probe demo hide" id="probebar">
+        <button class="btn ghost sm" id="probe">Demo: add an uncited sentence</button>
+        <p>Adds a sentence with no citation and runs the check again. The case is not changed.</p>
       </div>
       <div id="probes"></div>
     </section>
@@ -170,7 +195,7 @@ select { width: 100%; }
   <section class="card hide" id="ledgercard">
     <h2>Claim ledger: every fact, its source, and two timestamps</h2>
     <div class="ledger-wrap"><table>
-      <thead><tr><th>Claim</th><th>Agent</th><th>Assertion</th><th>Source</th><th>Publisher says true as of</th><th>We fetched at</th><th>SLA</th><th></th></tr></thead>
+      <thead><tr><th>Claim</th><th>Evidence</th><th>Assertion</th><th>Source</th><th>Publisher says true as of</th><th>We fetched at</th><th>SLA</th><th></th></tr></thead>
       <tbody id="ledger"></tbody>
     </table></div>
   </section>
@@ -195,17 +220,54 @@ function seg(el) {
 const segVal = (el) => el.querySelector("button.on").dataset.v;
 const day = (iso) => iso ? iso.slice(0, 10) : "";
 
+// Internal IDs from the API -> words for people. Unknown IDs fall back to the ID with spaces.
+const LABELS = {
+  structuring: "Structuring", rapid_movement: "Rapid movement", high_risk_corridor: "High-risk corridor",
+  sanctions_nexus: "Sanctions nexus", mule_funnel: "Mule funnel", round_tripping: "Round-tripping",
+  transactions: "Transactions", kyc: "KYC", watchlist: "Sanctions list", adverse_media: "Adverse media",
+  network: "Counterparty network",
+  txn_analyst: "Transactions", kyc_analyst: "KYC", watchlist_analyst: "Sanctions list", adverse_media_analyst: "Adverse media",
+  // Gate checks are named as checks, not claims, so they read correctly next to both ✓ and ✗.
+  confidence: "Confidence threshold", mandatory_evidence: "Required evidence",
+  staleness: "Evidence freshness", citation_coverage: "Citation coverage",
+  no_sanctions_or_pep_hit: "Sanctions / PEP screening", typology_allows_auto_close: "Typology allows auto-close",
+  auto_close: "auto-close", escalate: "escalate", false_positive: "false positive", suspicious: "suspicious",
+  archived: "archived", live: "live",
+};
+const L = (k) => LABELS[k] ?? String(k ?? "").replaceAll("_", " ");
+
+const ACTIONS = ["run", "rev", "sweep"];
 async function boot() {
-  meta = await (await fetch("/api/alerts")).json();
+  ACTIONS.forEach((id) => $(id).disabled = true);
+  $("alert").disabled = true;
+  $("alert").innerHTML = "<option>Loading alerts…</option>";
+  $("bootmsg").textContent = "";
+  const slow = setTimeout(() => $("bootmsg").textContent =
+    "Loading alerts. The server can take up to 30 seconds to start after a quiet period.", 3000);
+  try {
+    const r = await fetch("/api/alerts");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    meta = await r.json();
+  } catch (e) {
+    clearTimeout(slow);
+    $("alert").innerHTML = "<option>No alerts loaded</option>";
+    $("bootmsg").innerHTML = `Could not load alerts (${esc(e.message)}). <a onclick="boot()">Retry</a>`;
+    return;
+  }
+  clearTimeout(slow);
+  $("bootmsg").textContent = "";
   $("mode").textContent = meta.mode === "offline" ? "Offline replay: scripted models" : "Live: Gemini on Vertex";
   $("mode").classList.toggle("offline", meta.mode === "offline");
-  $("alert").innerHTML = meta.alerts.map((a) => `<option value="${esc(a.alert_id)}">${esc(a.label)} · ${esc(a.customer || a.account_id)}</option>`).join("");
+  $("alert").innerHTML = meta.alerts.map((a) =>
+    `<option value="${esc(a.alert_id)}">${esc(a.label)} · ${esc(a.customer || a.account_id)} · rule: ${esc(L(a.rule))}</option>`).join("");
   $("snap").innerHTML = ["archived", "live"].map((k, i) =>
     `<button data-v="${k}" class="${i ? "on" : ""}">${k === "archived" ? "Archived" : "Live"} · ${day(meta.snapshots[k].as_of)}</button>`).join("");
-  seg($("snap")); seg($("basis"));
-  $("run").onclick = () => runOne($("alert").value, segVal($("snap")), segVal($("basis")));
-  $("rev").onclick = runReversal;
+  $("alert").disabled = false;
+  ACTIONS.forEach((id) => $(id).disabled = false);
 }
+seg($("snap")); seg($("basis"));
+$("run").onclick = () => runOne($("alert").value, segVal($("snap")), segVal($("basis")));
+$("rev").onclick = runReversal;
 
 async function start(alert_id, snapshot, staleness_basis) {
   const r = await fetch("/api/cases", { method: "POST", headers: { "content-type": "application/json" },
@@ -252,10 +314,10 @@ async function runReversal() {
     const cs = await Promise.all(ids.map(getCase));
     cs.forEach((c, i) => {
       if (!c.decision) return;
-      const failed = (c.policy_gate?.conditions || []).filter((x) => !x.passed).map((x) => x.name);
+      const failed = (c.policy_gate?.conditions || []).filter((x) => !x.passed).map((x) => L(x.name));
       $(`t${i}`).textContent = c.decision === "auto_close" ? "AUTO-CLOSE" : "ESCALATE";
       $(`t${i}`).style.color = c.decision === "auto_close" ? "var(--ok)" : "var(--amber)";
-      $(`ts${i}`).textContent = failed.length ? `Gate failed: ${failed.join(", ")}` : "All six gate conditions passed";
+      $(`ts${i}`).textContent = failed.length ? `Failed: ${failed.join("; ")}` : "All six gate conditions passed";
     });
     if (cs.some((c) => c.status !== "done" && c.status !== "error")) setTimeout(poll, 600);
   };
@@ -264,23 +326,28 @@ async function runReversal() {
 
 function render(c) {
   ["casecard", "resultgrid", "ledgercard"].forEach((id) => $(id).classList.remove("hide"));
-  $("casetitle").textContent = `Case ${c.case_id || current}` + (c.snapshot ? ` · ${c.snapshot} list · ${c.staleness_basis === "retrieved_at" ? "naive clock" : "publisher-date clock"}` : "");
+  $("casetitle").textContent = `Case ${c.case_id || current}` + (c.snapshot ? ` · ${L(c.snapshot)} list ·${c.staleness_basis === "retrieved_at" ? "naive clock" : "publisher-date clock"}` : "");
   const idx = STAGES.findIndex(([k]) => k === c.stage);
   $("steps").innerHTML = STAGES.map(([k, l], i) =>
     `<span class="step ${c.status === "done" || i < idx ? "done" : i === idx ? "now" : ""}">${l}</span>`).join("")
     + (c.status === "error" ? `<span class="step" style="color:var(--bad)">${esc(c.error)}</span>` : "");
   const plan = c.evidence_plan;
-  $("plan").innerHTML = plan ? `<span class="muted">Typology <b>${esc(plan.typology)}</b> requires:</span> ` +
-    plan.required.map((e) => `<span class="pill">${esc(e)}</span>`).join(" ") +
+  const rule = (meta?.alerts || []).find((a) => a.alert_id === c.alert_id)?.rule;
+  $("plan").innerHTML = plan ? (rule ? `<span class="muted"><span class="term" tabindex="0" data-tip="The monitoring-system condition that raised the alert.">Rule</span> <b>${esc(L(rule))}</b> ·</span> ` : "") +
+    `<span class="muted"><span class="term" tabindex="0" data-tip="The money-laundering pattern the agent infers from the evidence. It sets which evidence is required.">Typology</span> <b>${esc(L(plan.typology))}</b> · requires</span> ` +
+    plan.required.map((e) => `<span class="pill">${esc(L(e))}</span>`).join(" ") +
     (c.typology_rationale ? ` <span class="muted">· ${esc(c.typology_rationale)}</span>` : "") : "";
 
   // Decision + gate
   if (c.decision) {
-    const conf = c.confidence == null ? "" : `model confidence this is a false positive: ${(+c.confidence).toFixed(2)}`;
+    const failed = c.policy_gate.conditions.filter((g) => !g.passed).map((g) => L(g.name));
+    const why = c.decision === "auto_close" ? "False alarm. No analyst review needed: all six checks passed."
+      : `Sent to an analyst. Failed: ${failed.join("; ") || "see note"}.`;
+    const conf = c.confidence == null ? "" : `Model confidence it is a false alarm: ${(+c.confidence).toFixed(2)}`;
     $("decision").innerHTML = `<div class="decision ${c.decision}"><div class="big">${c.decision === "auto_close" ? "AUTO-CLOSE" : "ESCALATE"}</div>
-      <div class="sub">${esc(conf)}${c.escalation_note ? "<br>" + esc(c.escalation_note) : ""}</div></div>`;
+      <div class="sub">${esc(why)}<br><span class="muted">${esc(conf)}</span>${c.escalation_note ? "<br>" + esc(c.escalation_note) : ""}</div></div>`;
     $("gate").innerHTML = c.policy_gate.conditions.map((g) =>
-      `<li><span class="${g.passed ? "y" : "n"}">${g.passed ? "✓" : "✗"}</span><span>${esc(g.name.replaceAll("_", " "))}</span><span class="det">${esc(g.detail)}</span></li>`).join("");
+      `<li><span class="${g.passed ? "y" : "n"}">${g.passed ? "✓" : "✗"}</span><span>${esc(L(g.name))}</span><span class="det">${esc(g.detail)}</span></li>`).join("");
   } else {
     $("decision").innerHTML = `<div class="muted">Waiting for the gate…</div>`;
     $("gate").innerHTML = "";
@@ -298,7 +365,7 @@ function render(c) {
   $("probes").innerHTML = (c.probes || []).map((pr) => {
     const body = pr.sentences.map((s) => `<span class="sent ${s.ok ? "" : "bad"}">${citeify(esc(s.text), ids)}</span>`).join(" ");
     return `<div class="draft probe-card"><div class="h">Verifier probe: the red sentence was added by you, not the model.
-      Rejected: coverage ${Math.round(pr.coverage * 100)}%; the gate fails on ${esc(pr.gate_failed.join(", "))} and would ${esc(pr.gate_decision.replace("_", "-"))}.</div>${body}</div>`;
+      Rejected: coverage ${Math.round(pr.coverage * 100)}%; the gate fails on: ${esc(pr.gate_failed.map(L).join("; "))}, so the decision would be ${esc(L(pr.gate_decision))}.</div>${body}</div>`;
   }).join("");
 
   // Ledger
@@ -308,7 +375,7 @@ function render(c) {
     const stale = staleIds.has(x.claim_id);
     const src = /^https?:/.test(x.source_uri) ? `<a href="${esc(x.source_uri)}" target="_blank" rel="noopener">${esc(new URL(x.source_uri).hostname)}</a>` : esc(x.source_uri);
     return `<tr id="row-${x.claim_id}" class="${stale ? "stale" : ""}">
-      <td class="mono">${esc(x.claim_id)}</td><td>${esc(x.produced_by_agent)}</td>
+      <td class="mono">${esc(x.claim_id)}</td><td>${esc(L(x.produced_by_agent))}</td>
       <td>${esc(x.assertion)} ${x.sanctions_or_pep_hit ? '<span class="pill hit">SANCTIONS HIT</span>' : ""}</td>
       <td class="mono" style="max-width:220px;word-break:break-all">${src}</td>
       <td class="ts">${stale ? "<b>" : ""}${esc(day(x.source_as_of))}${stale ? "</b>" : ""}</td>
@@ -319,14 +386,14 @@ function render(c) {
 
   // Reopen / reopens links
   let rn = "";
-  if (c.status === "reopened") rn = `<div class="notice">Reopened by the staleness sweep: ${esc((c.reopen_findings || []).map((f) => f.reason).join(" "))} <a onclick="show('${esc(c.reopened_as)}')">Open the new case →</a></div>`;
-  if (c.reopens) rn = `<div class="notice">This case reopens <a onclick="show('${esc(c.reopens)}')">${esc(c.reopens)}</a> after the staleness sweep.</div>`;
+  if (c.status === "reopened") rn = `<div class="notice">Reopened by the re-check: ${esc((c.reopen_findings || []).map((f) => f.reason).join(" "))} <a onclick="show('${esc(c.reopened_as)}')">Open the new case →</a></div>`;
+  if (c.reopens) rn = `<div class="notice">This case reopens <a onclick="show('${esc(c.reopens)}')">${esc(c.reopens)}</a> after the re-check of closed cases.</div>`;
   $("reopen").innerHTML = rn;
   // Review bar
   const done = c.status === "done" || c.status === "reopened";
   $("review").classList.toggle("hide", !done);
   $("hist").innerHTML = (c.human_decisions || []).map((h) =>
-    `#${h.n} ${esc(h.reviewer)}: <b>${esc(h.verdict.replace("_", " "))}</b> (${esc(h.action)} of ${esc(h.system_decision)})${h.note ? " · " + esc(h.note) : ""}`).join("<br>");
+    `#${h.n} ${esc(h.reviewer)}: <b>${esc(L(h.verdict))}</b> (${esc(h.action)} of ${esc(L(h.system_decision))})${h.note ? " · " + esc(h.note) : ""}`).join("<br>");
   $("sarcard").classList.toggle("hide", !c.sar_draft);
   $("sar").innerHTML = c.sar_draft ? citeify(esc(c.sar_draft), ids) : "";
 }
@@ -357,7 +424,7 @@ $("review").addEventListener("click", async (e) => {
 });
 $("sweep").onclick = async () => {
   $("sweepcard").classList.remove("hide");
-  $("sweepout").textContent = "Sweeping…";
+  $("sweepout").textContent = "Checking closed cases…";
   const r = await (await fetch("/api/sweep", { method: "POST" })).json();
   $("sweepout").innerHTML = `Checked ${r.checked} auto-closed case${r.checked === 1 ? "" : "s"}; reopened ${r.reopened.length}.` +
     r.reopened.map((x) => `<div class="notice">${esc(x.case_id)}: ${esc(x.findings.join(" "))} <a onclick="show('${esc(x.new_case_id)}')">Watch the re-run →</a></div>`).join("");
