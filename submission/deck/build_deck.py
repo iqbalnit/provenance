@@ -53,6 +53,7 @@ class Slide:
     def __init__(self) -> None:
         self.parts: list[str] = []
         self.images: list[tuple[str, Path]] = []  # (rId, source)
+        self.links: list[tuple[str, str]] = []    # (rId, url)
         self._id = 1000
 
     def nid(self) -> int:
@@ -75,6 +76,14 @@ def runs(text: str, sz: float, color: str = INK, face: str = FONT) -> str:
                    f'</a:solidFill><a:latin typeface="{f}"/><a:ea typeface="{f}"/><a:cs typeface="{f}"/>'
                    f'<a:sym typeface="{f}"/></a:rPr><a:t xml:space="preserve">{escape(chunk)}</a:t></a:r>')
     return "".join(out)
+
+
+def link(s: Slide, url: str, sz: float, color: str = BLUE) -> str:
+    """A paragraph whose text is a clickable external hyperlink (also clickable in the exported PDF)."""
+    rid = f"rIdL{len(s.links) + 1}"
+    s.links.append((rid, url))
+    run = runs(url, sz, color).replace("</a:rPr>", f'<a:hlinkClick r:id="{rid}"/></a:rPr>', 1)
+    return para("", sz).replace("<a:endParaRPr", run + "<a:endParaRPr", 1)
 
 
 def para(text: str = "", sz: float = 12, color: str = INK, face: str = FONT, align: str = "l",
@@ -467,7 +476,8 @@ def s_links(s: Slide, video: str) -> None:
     for k, (label, url) in enumerate(items):
         box(s, LEFT, y, 0.5, 0.5, para(str(k + 1), 14, WHITE, SEMI, align="ctr"), fill=BLUE, geom="ellipse",
             anchor="ctr", inset=0)
-        box(s, LEFT + 0.7, y - 0.05, 8.4, 0.62, [para(label, 13, INK, SEMI), para(url, 12, BLUE)], inset=0.02)
+        box(s, LEFT + 0.7, y - 0.05, 8.4, 0.62, [para(label, 13, INK, SEMI),
+            link(s, url, 12) if url.startswith("http") else para(url, 12, BLUE)], inset=0.02)
         y += 0.95
     box(s, LEFT - 0.08, y + 0.05, WIDTH, 0.6,
         para("Try it: open the product link, pick the hero alert and press “Same alert, old vs live sanctions list”.", 11, MUTED), inset=0.08)
@@ -536,9 +546,14 @@ def build(template: Path, out: Path, leader: str, video: str, numbers: dict) -> 
             xml = drop_text_boxes(_read(path))
             xml = xml.replace("</p:spTree>", "".join(s.parts) + "</p:spTree>", 1)
             path.write_text(xml, encoding="utf-8")
-            if s.images:
+            if s.images or s.links:
                 rels = ppt / "slides" / "_rels" / f"slide{num}.xml.rels"
                 rt = _read(rels)
+                for rid, url in s.links:
+                    rt = rt.replace("</Relationships>",
+                                    f'<Relationship Id="{rid}" Type="http://schemas.openxmlformats.org/officeDocument/'
+                                    f'2006/relationships/hyperlink" Target="{escape(url)}" TargetMode="External"/>'
+                                    "</Relationships>")
                 for rid, src in s.images:
                     name = f"prov_{src.stem}.jpg"
                     shutil.copyfile(src, media / name)
