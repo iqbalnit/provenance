@@ -73,7 +73,7 @@ make dev          # open http://localhost:8080
 
 `make help` lists every shortcut (`test`, `dev-gemini`, `smoke`, `eval`, `deploy-offline`, `deploy-gemini`, …).
 
-Press **Run the reversal**. The hero alert runs three ways through the full ADK agent graph:
+Under **Demo scenarios**, press **Same alert, old vs live sanctions list**. The hero alert runs three ways through the full ADK agent graph:
 the archived list with a naive fetch-date clock auto-closes it, the publisher-date clock escalates
 it as stale, and the live list escalates it on a sanctions hit. By default this runs in
 `PROVENANCE_MODE=offline`: scripted stand-in models on the fictional demo bundle in `demo/`,
@@ -87,9 +87,9 @@ PROVENANCE_MODE=gemini uv run uvicorn provenance.service.app:app --port 8080
 ```
 
 Also in the console:
-- **Run nightly sweep** re-screens every auto-closed case against today's list. It reopens the naively
+- **Re-check closed cases** (the nightly sweep) re-screens every auto-closed case against today's list. It reopens the naively
   closed hero case and re-runs it, and the re-run escalates.
-- **Probe the verifier** adds one uncited sentence to a finished case's narrative, in plain view, and shows the
+- **Demo: add an uncited sentence** (the verifier probe) adds one uncited sentence to a finished case's narrative, in plain view, and shows the
   deterministic verifier rejecting it. The case's decision is unchanged and the probe is recorded separately.
 - **Analyst review** confirms or overrides a decision. The verdict becomes the eval label.
 - **"Web result with a prompt injection"** shows the injection guard withholding an instruction-shaped

@@ -470,7 +470,7 @@ def s_links(s: Slide, video: str) -> None:
         box(s, LEFT + 0.7, y - 0.05, 8.4, 0.62, [para(label, 13, INK, SEMI), para(url, 12, BLUE)], inset=0.02)
         y += 0.95
     box(s, LEFT - 0.08, y + 0.05, WIDTH, 0.6,
-        para("Try it: open the product link, pick the hero alert and press “Run the reversal”.", 11, MUTED), inset=0.08)
+        para("Try it: open the product link, pick the hero alert and press “Same alert, old vs live sanctions list”.", 11, MUTED), inset=0.08)
 
 
 # ---------------------------------------------------------------- package surgery

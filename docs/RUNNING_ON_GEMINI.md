@@ -118,7 +118,7 @@ Check that everything works before touching the cloud:
 
 ```bash
 make test        # all tests should pass
-make dev         # open http://localhost:8080 and press "Run the reversal" (scripted models, no cloud)
+make dev         # open http://localhost:8080 and press "Same alert, old vs live sanctions list" (scripted models, no cloud)
 ```
 
 > **Alternative: Google Cloud Shell** (shell.cloud.google.com). `gcloud` and your login are already there.
@@ -212,7 +212,8 @@ To open it:
 - **Mac:** open http://localhost:8080.
 - **Cloud Shell:** click **Web preview → Preview on port 8080**.
 
-The badge in the header should read **"Live: Gemini on Vertex"**. Then press **Run the reversal**.
+The badge in the header should read **"Live: Gemini on Vertex"**. Then press **Same alert, old vs live sanctions list** under Demo scenarios.
+The first visit after a quiet period shows a loading note while Cloud Run starts; deploy with `MIN=1` to avoid it.
 
 What looks different from the offline replay:
 - **Typology rationale:** now the model's own sentence.
@@ -222,7 +223,7 @@ What looks different from the offline replay:
 - **Each case** takes 20–60 seconds instead of 1.
 
 Other things to try:
-- **Run nightly sweep.**
+- **Re-check closed cases** (the nightly sweep).
 - **Web result with a prompt injection.** Offline, the injected text comes from the fixture. On Gemini, live search is used,
   so the guard will only fire if a real page contains an injection.
 - **Evaluation:** to fill the page with Gemini numbers, run `make eval-gemini`.

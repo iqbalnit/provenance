@@ -13,8 +13,9 @@ The form allows up to 3 minutes and the rules say 3 to 4, so **3:00 or just unde
 **Before recording:**
 - Run the real hero once and keep that case open, so the drafts history shows a real rejection. Re-run until
   draft 1 is rejected for a genuine reason; Gemini often writes an uncited judgment sentence on this alert.
-  If it never does, use **Probe the verifier** and say that we added the sentence.
-- Open the deployed console in a fresh tab so the first Gemini call is warm.
+  If it never does, use **Demo: add an uncited sentence** and say that we added the sentence.
+- Deploy with `MIN=1` first, then open the deployed console once so it is warm; otherwise the first load shows
+  a "server can take up to 30 seconds" note while Cloud Run starts.
 - Browser at 1280×800 or larger, zoom 110%, notifications off, bookmarks bar hidden.
 
 ## Script
@@ -47,10 +48,10 @@ publisher date; press Run, cut the wait)*
 > *(point at the gate)* Then six fixed rules decide. / This customer is a real person OFAC sanctioned after our
 > older list was published, so the case goes to an analyst, with the evidence and a draft report ready.
 
-*If draft 1 passed on the run you recorded, press **Probe the verifier** and say instead:* "Here we add one
+*If draft 1 passed on the run you recorded, press **Demo: add an uncited sentence** and say instead:* "Here we add one
 sentence with no citation, and the parser rejects it. We added that sentence, not the model."
 
-**1:35–2:10 · The reversal** *(screen: deployed console, demo hero, press "Run the reversal")*
+**1:35–2:10 · The reversal** *(screen: deployed console, demo hero, press "Same alert, old vs live sanctions list")*
 > Now the part most systems get wrong. / Same alert, same model, three runs. / With an old sanctions list
 > downloaded this morning, a typical system thinks its evidence is fresh, and closes the alert. / Provenance
 > reads the publisher's date instead: the list is nineteen months old against a three-day limit, so it

@@ -326,11 +326,13 @@ async function runReversal() {
 
 function render(c) {
   ["casecard", "resultgrid", "ledgercard"].forEach((id) => $(id).classList.remove("hide"));
-  $("casetitle").textContent = `Case ${c.case_id || current}` + (c.snapshot ? ` · ${L(c.snapshot)} list ·${c.staleness_basis === "retrieved_at" ? "naive clock" : "publisher-date clock"}` : "");
+  $("casetitle").textContent = `Case ${c.case_id || current}` + (c.snapshot ? ` · ${L(c.snapshot)} list · ${c.staleness_basis === "retrieved_at" ? "naive clock" : "publisher-date clock"}` : "");
   const idx = STAGES.findIndex(([k]) => k === c.stage);
   $("steps").innerHTML = STAGES.map(([k, l], i) =>
     `<span class="step ${c.status === "done" || i < idx ? "done" : i === idx ? "now" : ""}">${l}</span>`).join("")
-    + (c.status === "error" ? `<span class="step" style="color:var(--bad)">${esc(c.error)}</span>` : "");
+    + (c.status === "error" ? `<span class="step" style="color:var(--bad)">${esc(c.error)}</span>` : "")
+    + (meta?.mode !== "offline" && c.status !== "done" && c.status !== "error"
+      ? `<span class="muted">Live Gemini run: usually 45 seconds to 2 minutes.</span>` : "");
   const plan = c.evidence_plan;
   const rule = (meta?.alerts || []).find((a) => a.alert_id === c.alert_id)?.rule;
   $("plan").innerHTML = plan ? (rule ? `<span class="muted"><span class="term" tabindex="0" data-tip="The monitoring-system condition that raised the alert.">Rule</span> <b>${esc(L(rule))}</b> ·</span> ` : "") +

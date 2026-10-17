@@ -59,7 +59,7 @@ The benchmark table shows "running" for any arm still null.
 ## Must be true on the deployed prototype
 
 **Deploy for judging:** `MODE=gemini MIN=1 ./deploy/deploy.sh` with the default `DATA=bundle`.
-- Judges get the labelled demo alerts, and "Run the reversal" shows all three outcomes.
+- Judges get the labelled demo alerts, and "Same alert, old vs live sanctions list" shows all three outcomes.
 - `/eval.html` still reads the real-data results from BigQuery `eval_results`, because gemini mode sets `PROVENANCE_EVAL=bigquery`.
 - `MIN=1` keeps one instance warm through the judging window, so the first click isn't a cold start. Set it back to 0 afterwards.
 

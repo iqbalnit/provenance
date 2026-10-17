@@ -30,6 +30,8 @@ main > * { min-width: 0; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
 .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
 .banner { padding: 10px 14px; border-radius: 8px; background: var(--amber-soft); color: var(--amber); font-weight: 600; }
+.banner a { color: inherit; cursor: pointer; text-decoration: underline; }
+.muted-banner { font-weight: 400; }
 .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .tile .k { font-size: 12px; color: var(--muted); }
@@ -72,6 +74,7 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-
   <nav><a href="/">Console</a><a href="/eval.html" class="on">Evaluation</a></nav>
 </header>
 <main>
+  <div id="bootmsg" class="banner muted-banner" hidden></div>
   <div id="banner" class="banner" hidden>PLUMBING CHECK: scripted models on the fictional demo bundle. These are not results.</div>
   <section class="tiles" id="tiles"></section>
 
@@ -119,7 +122,22 @@ const num = (v, d = 2) => v == null ? "–" : (+v).toFixed(d);
 const SERIES = { "A3": "--s-a3", "A1": "--s-a1", "A4": "--s-a4" };  // color follows the arm, never rank
 
 async function boot() {
-  const r = await (await fetch("/api/eval")).json();
+  const msg = $("bootmsg");
+  msg.hidden = false; msg.textContent = "Loading results…";
+  const slow = setTimeout(() => msg.textContent =
+    "Loading results. The server can take up to 30 seconds to start after a quiet period.", 3000);
+  let r;
+  try {
+    const res = await fetch("/api/eval");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    r = await res.json();
+  } catch (e) {
+    clearTimeout(slow);
+    msg.innerHTML = `Could not load results (${esc(e.message)}). <a onclick="boot()">Retry</a>`;
+    return;
+  }
+  clearTimeout(slow);
+  msg.hidden = true;
   $("banner").hidden = !r.plumbing_only;
   if (!r.arms.length) { $("none").hidden = false; return; }
   const by = Object.fromEntries(r.arms.map((a) => [a.arm, a]));
