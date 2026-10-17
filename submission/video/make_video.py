@@ -244,11 +244,22 @@ def to_wav(src: Path, dst: Path) -> float:
         return w.getnframes() / w.getframerate()
 
 
-def speak(beat_id: str, text: str, tmp: Path, voice: str, rate: int) -> Path:
+_kokoro = None
+
+
+def speak(beat_id: str, text: str, tmp: Path, voice: str, rate: int, kokoro_dir: str | None = None) -> Path:
+    global _kokoro
     own = next((p for ext in ("m4a", "wav", "aiff", "mp3") if (p := HERE / "voice" / f"{beat_id}.{ext}").exists()), None)
     if own:
         return own
-    if shutil.which("say"):
+    if kokoro_dir:     # open-source neural voice: --with kokoro-onnx --with soundfile
+        import soundfile  # noqa: PLC0415
+        from kokoro_onnx import Kokoro  # noqa: PLC0415
+        _kokoro = _kokoro or Kokoro(f"{kokoro_dir}/kokoro-v1.0.onnx", f"{kokoro_dir}/voices-v1.0.bin")
+        samples, sr = _kokoro.create(script.spoken(text), voice=voice, speed=rate / 165, lang="en-us")
+        raw = tmp / f"{beat_id}.raw.wav"
+        soundfile.write(str(raw), samples, sr)
+    elif shutil.which("say"):
         raw = tmp / f"{beat_id}.aiff"
         subprocess.run(["say", "-v", voice, "-r", str(rate), "-o", str(raw), script.spoken(text)], check=True)
     elif shutil.which("espeak-ng"):
@@ -290,7 +301,7 @@ def clip(img: Path, dur: float, dst: Path) -> None:
        "-r", str(FPS), str(dst))
 
 
-def assemble(facts: dict, shots: Path, out: Path, voice: str, rate: int, log) -> float:
+def assemble(facts: dict, shots: Path, out: Path, voice: str, rate: int, log, kokoro_dir: str | None = None) -> float:
     tmp = out / "build"
     tmp.mkdir(exist_ok=True)
     timeline, audio, t = [], [], 0.6     # short lead-in before the first word
@@ -304,7 +315,7 @@ def assemble(facts: dict, shots: Path, out: Path, voice: str, rate: int, log) ->
     for beat_id, shot_key, text in script.BEATS:
         text = text(facts) if callable(text) else text
         wav = tmp / f"{beat_id}.wav"
-        dur = to_wav(speak(beat_id, text, tmp, voice, rate), wav)
+        dur = to_wav(speak(beat_id, text, tmp, voice, rate, kokoro_dir), wav)
         timeline.append((beat_id, shot_key, text, t, dur))
         audio += [wav, silence]
         t += dur + GAP_S
@@ -340,6 +351,8 @@ def main() -> None:
     ap.add_argument("--real-case", help="reuse a finished case on --real (or --app) instead of running a new one")
     ap.add_argument("--probe", action="store_true", help="show the verifier probe even if a real draft was rejected")
     ap.add_argument("--voice", default="Samantha", help="macOS voice (say -v '?' lists them)")
+    ap.add_argument("--kokoro", metavar="DIR", help="use the Kokoro neural voice; DIR holds kokoro-v1.0.onnx and "
+                    "voices-v1.0.bin (github.com/thewh1teagle/kokoro-onnx releases); --voice af_heart")
     ap.add_argument("--rate", type=int, default=165, help="words per minute")
     ap.add_argument("--out", default=str(ROOT / "artifacts/video"))
     ap.add_argument("--reuse-shots", action="store_true", help="skip capture; re-voice and re-assemble only")
@@ -354,7 +367,7 @@ def main() -> None:
     else:
         facts = asyncio.run(capture(args, shots, log))
     log(f"facts: {facts}")
-    total = assemble(facts, shots, out, args.voice, args.rate, log)
+    total = assemble(facts, shots, out, args.voice, args.rate, log, args.kokoro)
     log(f"\nwrote {out / 'provenance.mp4'} ({total:.0f}s), {out / 'provenance.srt'}, shots in {shots}")
     if total > LIMIT_S:
         sys.exit(f"Over {LIMIT_S:.0f}s: raise --rate (now {args.rate}) or record your own voice files.")

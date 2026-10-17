@@ -36,6 +36,9 @@ Drop `--real …` if you skipped the step above. Output in `artifacts/video/`: `
 - `--voice Daniel` (any name from `say -v '?'`; download a Premium or Enhanced voice in System Settings →
   Accessibility → Spoken Content for a more natural sound), `--rate 160` for words per minute. It stops if the video
   would run over 3:00.
+- **Kokoro neural voice** (open source, more natural than `say`): download `kokoro-v1.0.onnx` and
+  `voices-v1.0.bin` from the `model-files-v1.0` release of github.com/thewh1teagle/kokoro-onnx into a folder,
+  add `--with kokoro-onnx --with soundfile` to `uv run`, and pass `--kokoro <folder> --voice af_heart`.
 - **Your own voice** (recommended if you have 15 minutes): record each line of `artifacts/video/narration.txt` as
   `submission/video/voice/<beat id>.m4a`, for example `voice/01-problem.m4a`, using QuickTime → New Audio Recording.
   Then `… make_video.py --reuse-shots` re-assembles with your recordings without re-running the app. Beats you have
